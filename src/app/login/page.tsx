@@ -58,12 +58,21 @@ function LoginInner() {
     // handle plpgsql cleanly).
     const userId = verifyData.user?.id;
     if (userId) {
-      await supabase.from("profiles").upsert({ id: userId }, { onConflict: "id" });
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({ id: userId }, { onConflict: "id" });
+      if (upsertError) {
+        setLoading(false);
+        return setError(
+          `Couldn't create your profile: ${upsertError.message}. This usually means the profiles table or its RLS policies are missing — re-run the SQL migrations.`,
+        );
+      }
     }
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarded_at")
+      .eq("id", userId!)
       .maybeSingle();
     setLoading(false);
     router.replace(profile?.onboarded_at ? next : "/onboarding");

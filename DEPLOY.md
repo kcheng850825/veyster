@@ -38,7 +38,7 @@ Run these in order:
 
 | # | File | What it does |
 |---|---|---|
-| 1 | `supabase/migrations/0001_init.sql` | Creates all tables, triggers, auto-profile-on-signup |
+| 1 | `supabase/migrations/0001_init.sql` | Tables, types, indexes, RLS-ready columns |
 | 2 | `supabase/migrations/0002_rls.sql`  | Row-level security (who can read/write what) |
 | 3 | `supabase/migrations/0003_ethnicity_seed.sql` | US Census + international race/ethnicity options |
 | 4 | `supabase/migrations/0004_minimal_geo_seed.sql` | ~55 countries, US states, top 80 US cities |
@@ -46,6 +46,35 @@ Run these in order:
 > **Don't want to deal with the CLI for full GeoNames?** You're done after
 > step 4 — you have enough country/state/city data for US-focused testing.
 > You can run the full 26,000-city import later.
+
+### If the raw files seem to fail
+
+Always pull the raw file from the **`claude/survey-pwa-swipe-XBOr0`**
+branch (not `main`), e.g.:
+
+```
+https://raw.githubusercontent.com/kcheng850825/veyster/claude/survey-pwa-swipe-XBOr0/supabase/migrations/0001_init.sql
+```
+
+If you've run into errors on a previous attempt, the partial schema may
+block a re-run. Clear state first by pasting this into the SQL Editor:
+
+```sql
+drop schema public cascade;
+create schema public;
+grant all on schema public to postgres, anon, authenticated, service_role;
+```
+
+Then run 0001 through 0004 fresh. All four are idempotent — safe to
+re-run anytime.
+
+### Why there's no plpgsql in these files
+
+Supabase's SQL Editor has a parser quirk that mangles `SELECT … INTO
+variable` inside plpgsql function bodies, regardless of dollar-quote
+style. To keep paste-and-run reliable, all three trigger jobs
+(auto-create profile, bump `updated_at`, cap questions at 10) are
+implemented in TypeScript in the app instead.
 
 ---
 
@@ -67,19 +96,61 @@ in step 6.
 
 ---
 
-## 4. Enable email sign-in in Supabase
+## 4. Configure email sign-in (6-digit code, not magic link)
 
-Still in Supabase:
+Supabase's defaults here will trip you up. Follow exactly:
 
-1. **Authentication → Providers**: make sure **Email** is **enabled**
-   (should already be, by default).
-2. **Authentication → Email Templates → Magic Link**: find the template and
-   change its **Subject** to something like `Your Veyster sign-in code`.
-3. In the body, make sure the `{{ .Token }}` variable is shown somewhere —
-   that's the 6-digit code respondents will type in. Default template
-   already includes it; you don't have to touch it.
-4. **Authentication → URL Configuration**: we'll come back here in step 7
-   after Vercel gives us a URL.
+### 4a. Enable the Email provider
+
+- **Authentication → Sign In / Providers** (left sidebar)
+- Click **Email** to expand that row
+- At the top of the Email pane, make sure **Enable Email Provider** is **ON**
+- In the same pane, set **Confirm email** to **OFF** — otherwise new
+  signups get an extra "please click this link" email before they can
+  even request a sign-in code
+- Set **Email OTP Length** to **`6`** (default can be 8 depending on
+  project vintage)
+- Set **Email OTP Expiration** to `600` (10 min) or leave at 3600 (1 hr)
+- Click **Save**
+
+### 4b. Rewrite the email template so it shows the code
+
+By default, Supabase sends a clickable magic link instead of a code.
+Change the template so it surfaces `{{ .Token }}` prominently.
+
+- **Authentication → Emails** (it's *Emails*, not *Email Templates* —
+  Supabase renamed it)
+- Select **Magic Link** from the template list
+- **Subject**: `Your Veyster sign-in code`
+- **Body** (paste the whole thing, replacing what's there):
+
+  ```html
+  <h2>Your Veyster sign-in code</h2>
+  <p>Enter this 6-digit code to sign in:</p>
+  <p style="font-size:32px;font-weight:bold;letter-spacing:8px;font-family:monospace;">{{ .Token }}</p>
+  <p style="color:#666;font-size:13px;">This code expires in 10 minutes. If you didn't request it, you can ignore this email.</p>
+  ```
+
+- Click **Save changes**
+
+> **How the code is generated:** when our app calls `signInWithOtp()`,
+> Supabase's auth server generates a cryptographically random 6-digit
+> number, hashes it into `auth.one_time_tokens`, and emails the plaintext
+> via the template. We never see or store the code — we just hand the
+> user's typed-in number back to Supabase for verification.
+
+### 4c. URL Configuration (come back to this in step 7)
+
+After Vercel gives you a URL, you'll set **Site URL** and
+**Redirect URLs** under **Authentication → URL Configuration**.
+
+### 4d. Users stuck as "unconfirmed"
+
+If you signed up any test accounts *before* toggling "Confirm email"
+off, those accounts are stuck in an unconfirmed state and can't sign in
+even after the toggle flip. Fix: **Authentication → Users**, find the
+row, either delete it (and re-sign-up fresh) or click the row and
+manually mark as confirmed.
 
 ---
 

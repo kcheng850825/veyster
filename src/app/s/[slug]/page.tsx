@@ -19,7 +19,7 @@ export default async function SurveyIntroPage({
     .from("profiles")
     .select("*")
     .eq("id", userData.user.id)
-    .single<Profile>();
+    .maybeSingle<Profile>();
 
   if (!profile?.onboarded_at) redirect(`/onboarding?next=/s/${slug}`);
 

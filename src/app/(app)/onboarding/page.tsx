@@ -1,20 +1,11 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { loadOrCreateProfile } from "@/lib/supabase/profile";
 import { DemographicsForm } from "@/components/DemographicsForm";
 
 export default async function Onboarding() {
-  const supabase = await getServerSupabase();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userData.user.id)
-    .single();
-
-  if (profile?.onboarded_at) redirect("/feed");
+  const { profile } = await loadOrCreateProfile();
+  if (profile.onboarded_at) redirect("/feed");
 
   return (
     <div>
@@ -24,7 +15,7 @@ export default async function Onboarding() {
         can change it anytime in your profile.
       </p>
       <Suspense fallback={null}>
-        <DemographicsForm profile={profile!} mode="onboarding" />
+        <DemographicsForm profile={profile} mode="onboarding" />
       </Suspense>
     </div>
   );
