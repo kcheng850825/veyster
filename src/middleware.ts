@@ -14,6 +14,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/profile") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/surveys") ||
+    pathname.startsWith("/admin") ||
     pathname.startsWith("/s/");
 
   // If Supabase env vars aren't configured yet, keep the site loadable.

@@ -173,14 +173,19 @@ manually mark as confirmed.
 
 On the same Vercel import screen, expand **Environment Variables** and add:
 
-| Key | Value |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | (paste the Project URL from step 3) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (paste the anon key from step 3) |
-| `NEXT_PUBLIC_SITE_URL` | leave blank for now — we'll fill it in step 7 |
+| Key | Value | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | (paste the Project URL from step 3) | |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (paste the anon key from step 3) | |
+| `NEXT_PUBLIC_SITE_URL` | leave blank for now — we'll fill it in step 7 | |
+| `SUPABASE_SERVICE_ROLE_KEY` | (paste the `service_role` key from step 3) | **No `NEXT_PUBLIC_` prefix**. Used server-side only for the /admin page (deleting users bypasses RLS). |
 
-Leave all three environments (**Production**, **Preview**, **Development**)
+Leave all environments (**Production**, **Preview**, **Development**)
 checked.
+
+> Double-check the `SUPABASE_SERVICE_ROLE_KEY` doesn't have `NEXT_PUBLIC_` in
+> its name — that would ship the key to every browser and is a critical
+> security bug. Only server code reads it.
 
 Click **Deploy**. First build takes ~90 seconds.
 

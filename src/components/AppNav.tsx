@@ -27,7 +27,7 @@ function inferModeFromPath(pathname: string): Mode | null {
   return null;
 }
 
-export function AppNav() {
+export function AppNav({ superadmin = false }: { superadmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("respondent");
@@ -63,6 +63,20 @@ export function AppNav() {
           </Link>
           <div className="flex items-center gap-3">
             <ModeSwitcher current={mode} onSwitch={switchMode} />
+            {superadmin && (
+              <Link
+                href="/admin"
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-sm font-medium",
+                  pathname.startsWith("/admin")
+                    ? "bg-red-50 text-red-700"
+                    : "text-red-600 hover:bg-red-50",
+                )}
+                title="Superadmin"
+              >
+                Admin
+              </Link>
+            )}
             <Link
               href="/profile"
               className={clsx(
