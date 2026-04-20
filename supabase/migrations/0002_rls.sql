@@ -1,5 +1,17 @@
 -- Row-level security policies.
 
+-- Base PostgreSQL grants. Supabase normally applies these automatically
+-- when tables are created through the dashboard, but if you've run
+-- `drop schema public cascade` to reset, these need to be reapplied or
+-- every request will return "permission denied for table <name>".
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+grant all on all functions in schema public to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+
 alter table profiles              enable row level security;
 alter table surveys               enable row level security;
 alter table questions             enable row level security;
