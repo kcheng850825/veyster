@@ -1,27 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import type { Question, Survey, VerificationField } from "@/lib/types";
+import type { Question, Survey, SurveyVersion, VerificationField } from "@/lib/types";
 import { VERIFICATION_FIELDS, MAX_QUESTIONS_PER_SURVEY } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 
-type Props = { initialSurvey: Survey; initialQuestions: Question[] };
+type Props = {
+  initialSurvey: Survey;
+  currentVersion: SurveyVersion;
+  allVersions: SurveyVersion[];
+  initialQuestions: Question[];
+};
 
-export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
+export function SurveyEditor({
+  initialSurvey,
+  currentVersion,
+  allVersions,
+  initialQuestions,
+}: Props) {
   const router = useRouter();
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const [survey, setSurvey] = useState(initialSurvey);
+  const [version, setVersion] = useState(currentVersion);
   const [questions, setQuestions] = useState<Question[]>(
     [...initialQuestions].sort((a, b) => a.position - b.position),
   );
   const [saving, setSaving] = useState(false);
-  const [, startTransition] = useTransition();
 
-  const locked = survey.status !== "draft";
+  const editable = version.status === "draft";
+  const latestVersion = allVersions[0];
+  const canCreateNewVersion =
+    latestVersion.status !== "draft" && version.id === latestVersion.id;
 
   async function patchSurvey(patch: Partial<Survey>) {
     setSaving(true);
@@ -37,11 +50,17 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
   }
 
   async function addQuestion() {
+    if (!editable) return;
     if (questions.length >= MAX_QUESTIONS_PER_SURVEY) return;
     const position = questions.length + 1;
     const { data, error } = await supabase
       .from("questions")
-      .insert({ survey_id: survey.id, position, text: "New question" })
+      .insert({
+        survey_id: survey.id,
+        version_id: version.id,
+        position,
+        text: "New question",
+      })
       .select("*")
       .single();
     if (error) return alert(error.message);
@@ -76,21 +95,129 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
     next[idx] = { ...b, position: a.position };
     next[swap] = { ...a, position: b.position };
     setQuestions(next);
-    // Use temp positions to avoid unique constraint collision
     await supabase.from("questions").update({ position: 99 }).eq("id", a.id);
     await supabase.from("questions").update({ position: a.position }).eq("id", b.id);
     await supabase.from("questions").update({ position: b.position }).eq("id", a.id);
   }
 
-  async function publish() {
+  async function publishVersion() {
     if (questions.length === 0) {
       alert("Add at least one question before publishing.");
       return;
     }
-    await patchSurvey({ status: "open", opened_at: new Date().toISOString() });
+    setSaving(true);
+    // Retire any currently-open versions of this survey.
+    const { error: retErr } = await supabase
+      .from("survey_versions")
+      .update({ status: "retired", retired_at: new Date().toISOString() })
+      .eq("survey_id", survey.id)
+      .eq("status", "open");
+    if (retErr) {
+      setSaving(false);
+      return alert(retErr.message);
+    }
+    // Open this version.
+    const { data: opened, error } = await supabase
+      .from("survey_versions")
+      .update({ status: "open", opened_at: new Date().toISOString() })
+      .eq("id", version.id)
+      .select("*")
+      .single();
+    setSaving(false);
+    if (error) return alert(error.message);
+    if (opened) setVersion(opened as SurveyVersion);
+    router.refresh();
   }
-  async function close() {
-    await patchSurvey({ status: "closed", closed_at: new Date().toISOString() });
+
+  async function retireVersion() {
+    if (!confirm("Retire this version? New respondents won't be able to take it.")) return;
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("survey_versions")
+      .update({ status: "retired", retired_at: new Date().toISOString() })
+      .eq("id", version.id)
+      .select("*")
+      .single();
+    setSaving(false);
+    if (error) return alert(error.message);
+    if (data) setVersion(data as SurveyVersion);
+    router.refresh();
+  }
+
+  async function createNewVersion() {
+    setSaving(true);
+    const nextNumber = Math.max(...allVersions.map((x) => x.version_number)) + 1;
+    const { data: newVersion, error } = await supabase
+      .from("survey_versions")
+      .insert({
+        survey_id: survey.id,
+        version_number: nextNumber,
+        status: "draft",
+      })
+      .select("*")
+      .single();
+    if (error) {
+      setSaving(false);
+      return alert(error.message);
+    }
+
+    // Copy questions from the current latest version. Map old->new ids so we
+    // can rewrite next_on_yes / next_on_no references.
+    const sourceVersionId = latestVersion.id;
+    const { data: sourceQs } = await supabase
+      .from("questions")
+      .select("*")
+      .eq("version_id", sourceVersionId)
+      .order("position")
+      .returns<Question[]>();
+
+    const idMap = new Map<string, string>();
+    if (sourceQs && sourceQs.length > 0) {
+      // First pass: insert without branching refs. Preserve question_group_id
+      // so the new version's questions are linked to the originals for the
+      // "Combined" results view.
+      const firstPass = sourceQs.map((q) => ({
+        survey_id: survey.id,
+        version_id: newVersion!.id,
+        position: q.position,
+        text: q.text,
+        end_on_yes: q.end_on_yes,
+        end_on_no: q.end_on_no,
+        question_group_id: q.question_group_id,
+      }));
+      const { data: inserted, error: insErr } = await supabase
+        .from("questions")
+        .insert(firstPass)
+        .select("*")
+        .returns<Question[]>();
+      if (insErr) {
+        setSaving(false);
+        return alert(insErr.message);
+      }
+      // Match by position to build id map.
+      const newByPos = new Map<number, string>();
+      (inserted ?? []).forEach((q) => newByPos.set(q.position, q.id));
+      sourceQs.forEach((q) => {
+        const newId = newByPos.get(q.position);
+        if (newId) idMap.set(q.id, newId);
+      });
+
+      // Second pass: rewrite branch targets.
+      for (const q of sourceQs) {
+        const newId = idMap.get(q.id);
+        if (!newId) continue;
+        const patch: { next_on_yes?: string | null; next_on_no?: string | null } = {};
+        if (q.next_on_yes) patch.next_on_yes = idMap.get(q.next_on_yes) ?? null;
+        if (q.next_on_no)  patch.next_on_no  = idMap.get(q.next_on_no)  ?? null;
+        if (patch.next_on_yes || patch.next_on_no) {
+          await supabase.from("questions").update(patch).eq("id", newId);
+        }
+      }
+    }
+
+    setSaving(false);
+    router.replace(`/surveys/${survey.id}?v=${newVersion!.id}`);
+    router.refresh();
   }
 
   function toggleVerification(key: VerificationField) {
@@ -101,29 +228,57 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
     patchSurvey({ verification_fields: next });
   }
 
+  function switchVersion(id: string) {
+    router.replace(`/surveys/${survey.id}?v=${id}`);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <div className="text-xs uppercase tracking-wide text-gray-500">
-              {survey.status}
+              {survey.title}
             </div>
-            <h1 className="text-2xl font-bold">{survey.title}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <h1 className="text-2xl font-bold">v{version.version_number}</h1>
+              <StatusBadge status={version.status} />
+            </div>
           </div>
-          <div className="flex gap-2">
-            {survey.status === "draft" && (
-              <Button onClick={publish} disabled={saving}>
-                Publish
+          <div className="flex gap-2 flex-wrap">
+            {allVersions.length > 1 && (
+              <Select
+                value={version.id}
+                onChange={(e) => switchVersion(e.target.value)}
+                className="!py-1.5"
+              >
+                {allVersions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    v{v.version_number} · {v.status}
+                  </option>
+                ))}
+              </Select>
+            )}
+            {version.status === "draft" && (
+              <Button onClick={publishVersion} disabled={saving}>
+                Publish v{version.version_number}
               </Button>
             )}
-            {survey.status === "open" && (
+            {version.status === "open" && (
               <>
                 <Link href={`/surveys/${survey.id}/share`}>
                   <Button variant="secondary">Share</Button>
                 </Link>
-                <Button variant="ghost" onClick={close}>Close</Button>
+                <Button variant="ghost" onClick={retireVersion}>
+                  Retire
+                </Button>
               </>
+            )}
+            {canCreateNewVersion && (
+              <Button variant="secondary" onClick={createNewVersion} disabled={saving}>
+                New version →
+              </Button>
             )}
             <Link href={`/surveys/${survey.id}/results`}>
               <Button variant="secondary">Results</Button>
@@ -131,8 +286,8 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
           </div>
         </div>
 
-        <fieldset disabled={locked} className="space-y-3 disabled:opacity-70">
-          <Field label="Title">
+        <fieldset className="space-y-3">
+          <Field label="Title" hint="Applies to all versions of this survey.">
             <Input
               defaultValue={survey.title}
               onBlur={(e) => patchSurvey({ title: e.target.value })}
@@ -162,7 +317,9 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
-        <h2 className="font-semibold">Questions ({questions.length} / {MAX_QUESTIONS_PER_SURVEY})</h2>
+        <h2 className="font-semibold">
+          Questions in v{version.version_number} ({questions.length} / {MAX_QUESTIONS_PER_SURVEY})
+        </h2>
 
         <ol className="space-y-3">
           {questions.map((q, i) => {
@@ -170,16 +327,13 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
               .filter((o) => o.position > q.position)
               .map((o) => ({ id: o.id, position: o.position, text: o.text }));
             return (
-              <li
-                key={q.id}
-                className="rounded-xl border border-gray-200 p-3 bg-gray-50"
-              >
+              <li key={q.id} className="rounded-xl border border-gray-200 p-3 bg-gray-50">
                 <div className="flex items-start gap-2">
                   <div className="flex flex-col gap-1">
                     <button
                       type="button"
                       onClick={() => move(q.id, -1)}
-                      disabled={locked || i === 0}
+                      disabled={!editable || i === 0}
                       className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
                       aria-label="Move up"
                     >
@@ -191,7 +345,7 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
                     <button
                       type="button"
                       onClick={() => move(q.id, 1)}
-                      disabled={locked || i === questions.length - 1}
+                      disabled={!editable || i === questions.length - 1}
                       className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
                       aria-label="Move down"
                     >
@@ -204,62 +358,36 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
                       onBlur={(e) => updateQuestion(q.id, { text: e.target.value })}
                       rows={2}
                       maxLength={280}
-                      disabled={locked}
+                      disabled={!editable}
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <BranchControl
                         label="If Yes →"
-                        value={
-                          q.end_on_yes
-                            ? "__end"
-                            : q.next_on_yes ?? "__next"
-                        }
+                        value={q.end_on_yes ? "__end" : q.next_on_yes ?? "__next"}
                         laterPositions={laterPositions}
-                        disabled={locked}
+                        disabled={!editable}
                         onChange={(val) => {
                           if (val === "__end") {
-                            updateQuestion(q.id, {
-                              end_on_yes: true,
-                              next_on_yes: null,
-                            });
+                            updateQuestion(q.id, { end_on_yes: true, next_on_yes: null });
                           } else if (val === "__next") {
-                            updateQuestion(q.id, {
-                              end_on_yes: false,
-                              next_on_yes: null,
-                            });
+                            updateQuestion(q.id, { end_on_yes: false, next_on_yes: null });
                           } else {
-                            updateQuestion(q.id, {
-                              end_on_yes: false,
-                              next_on_yes: val,
-                            });
+                            updateQuestion(q.id, { end_on_yes: false, next_on_yes: val });
                           }
                         }}
                       />
                       <BranchControl
                         label="If No →"
-                        value={
-                          q.end_on_no
-                            ? "__end"
-                            : q.next_on_no ?? "__next"
-                        }
+                        value={q.end_on_no ? "__end" : q.next_on_no ?? "__next"}
                         laterPositions={laterPositions}
-                        disabled={locked}
+                        disabled={!editable}
                         onChange={(val) => {
                           if (val === "__end") {
-                            updateQuestion(q.id, {
-                              end_on_no: true,
-                              next_on_no: null,
-                            });
+                            updateQuestion(q.id, { end_on_no: true, next_on_no: null });
                           } else if (val === "__next") {
-                            updateQuestion(q.id, {
-                              end_on_no: false,
-                              next_on_no: null,
-                            });
+                            updateQuestion(q.id, { end_on_no: false, next_on_no: null });
                           } else {
-                            updateQuestion(q.id, {
-                              end_on_no: false,
-                              next_on_no: val,
-                            });
+                            updateQuestion(q.id, { end_on_no: false, next_on_no: val });
                           }
                         }}
                       />
@@ -268,7 +396,7 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
                   <button
                     type="button"
                     onClick={() => deleteQuestion(q.id)}
-                    disabled={locked}
+                    disabled={!editable}
                     className="text-red-500 hover:text-red-700 text-sm disabled:opacity-30"
                     aria-label="Delete question"
                   >
@@ -280,7 +408,7 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
           })}
         </ol>
 
-        {!locked && questions.length < MAX_QUESTIONS_PER_SURVEY && (
+        {editable && questions.length < MAX_QUESTIONS_PER_SURVEY && (
           <Button variant="secondary" onClick={addQuestion}>
             + Add question
           </Button>
@@ -289,7 +417,8 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
         <h2 className="font-semibold">Payout mode</h2>
-        <fieldset disabled={locked} className="space-y-2 disabled:opacity-70">
+        <p className="text-xs text-gray-500">Applies to all versions.</p>
+        <fieldset className="space-y-2">
           <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
             <input
               type="radio"
@@ -324,9 +453,7 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
                   onChange={(e) =>
                     setSurvey({ ...survey, complete_premium_pct: +e.target.value })
                   }
-                  onBlur={(e) =>
-                    patchSurvey({ complete_premium_pct: +e.target.value })
-                  }
+                  onBlur={(e) => patchSurvey({ complete_premium_pct: +e.target.value })}
                   className="w-14 mx-1 px-2 py-0.5 border rounded text-center"
                 />
                 % premium per question)
@@ -342,9 +469,9 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
       <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
         <h2 className="font-semibold">Pre-survey verification</h2>
         <p className="text-xs text-gray-500">
-          Respondents will be asked to confirm these profile fields are still accurate before starting. No extra fee.
+          Respondents will be asked to confirm these profile fields are still accurate before starting. Applies to all versions.
         </p>
-        <fieldset disabled={locked} className="flex flex-wrap gap-2 disabled:opacity-70">
+        <fieldset className="flex flex-wrap gap-2">
           {VERIFICATION_FIELDS.map((f) => {
             const on = survey.verification_fields.includes(f.key as VerificationField);
             return (
@@ -366,12 +493,26 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
         </fieldset>
       </section>
 
-      {locked && (
+      {!editable && (
         <p className="text-xs text-gray-500">
-          This survey is {survey.status}; editing is disabled to protect response integrity.
+          v{version.version_number} is {version.status}; its questions are frozen.
+          {canCreateNewVersion && " To change questions, create a new version."}
         </p>
       )}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: SurveyVersion["status"] }) {
+  const styles = {
+    draft:   "bg-gray-100 text-gray-600",
+    open:    "bg-emerald-50 text-emerald-700",
+    retired: "bg-amber-50 text-amber-700",
+  } as const;
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full ${styles[status]}`}>
+      {status}
+    </span>
   );
 }
 

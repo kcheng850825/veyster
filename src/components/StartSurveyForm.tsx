@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/Button";
 type Props = {
   slug: string;
   surveyId: string;
+  versionId: string;
   profile: Profile;
   verificationFields: VerificationField[];
 };
 
-export function StartSurveyForm({ slug, surveyId, profile, verificationFields }: Props) {
+export function StartSurveyForm({ slug, surveyId, versionId, profile, verificationFields }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
@@ -40,6 +41,7 @@ export function StartSurveyForm({ slug, surveyId, profile, verificationFields }:
     };
     const { error } = await supabase.from("survey_sessions").insert({
       survey_id: surveyId,
+      version_id: versionId,
       respondent_id: profile.id,
       profile_snapshot: snapshot,
       verified_fields: verificationFields,

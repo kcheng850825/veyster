@@ -14,13 +14,20 @@ async function createSurvey(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   if (!title) return;
 
-  const { data, error } = await sb
+  const { data: survey, error } = await sb
     .from("surveys")
     .insert({ title, description, owner_id: userData.user.id })
     .select("id")
     .single();
   if (error) throw error;
-  redirect(`/surveys/${data!.id}`);
+
+  // Seed version 1 so the editor always has a version to work with.
+  const { error: vErr } = await sb
+    .from("survey_versions")
+    .insert({ survey_id: survey!.id, version_number: 1, status: "draft" });
+  if (vErr) throw vErr;
+
+  redirect(`/surveys/${survey!.id}`);
 }
 
 export default function NewSurveyPage() {

@@ -2,29 +2,62 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 
+type VersionRow = {
+  id: string;
+  version_number: number;
+  survey_id: string;
+  surveys: {
+    id: string;
+    title: string;
+    description: string | null;
+    share_slug: string;
+    owner_id: string;
+  } | null;
+};
+
 export default async function FeedPage() {
   const supabase = await getServerSupabase();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) redirect("/login");
 
-  // Which surveys has this user already answered? Hide them.
-  const { data: myCompletedSessions } = await supabase
+  // Every currently-open version whose parent survey is publicly listed and
+  // not owned by the current user.
+  const { data: openVersions } = await supabase
+    .from("survey_versions")
+    .select(`
+      id, version_number, survey_id,
+      surveys!inner ( id, title, description, share_slug, owner_id, visibility )
+    `)
+    .eq("status", "open")
+    .eq("surveys.visibility", "public")
+    .neq("surveys.owner_id", userData.user.id)
+    .order("opened_at", { ascending: false })
+    .limit(50)
+    .returns<VersionRow[]>();
+
+  // Hide versions the current user has already completed.
+  const { data: completedSessions } = await supabase
     .from("survey_sessions")
-    .select("survey_id")
+    .select("version_id")
     .eq("respondent_id", userData.user.id)
     .not("completed_at", "is", null);
-  const answered = new Set((myCompletedSessions ?? []).map((s) => s.survey_id));
+  const completedVersionIds = new Set(
+    (completedSessions ?? []).map((s) => s.version_id),
+  );
 
-  const { data: surveys } = await supabase
-    .from("surveys")
-    .select("id, title, description, share_slug, owner_id, questions(count)")
-    .eq("status", "open")
-    .eq("visibility", "public")
-    .neq("owner_id", userData.user.id)
-    .order("opened_at", { ascending: false })
-    .limit(50);
+  const available = (openVersions ?? []).filter(
+    (v) => v.surveys && !completedVersionIds.has(v.id),
+  );
 
-  const available = (surveys ?? []).filter((s) => !answered.has(s.id));
+  // Count questions per version in one roundtrip.
+  const { data: qCounts } = await supabase
+    .from("questions")
+    .select("version_id")
+    .in("version_id", available.map((v) => v.id));
+  const countByVersion = new Map<string, number>();
+  (qCounts ?? []).forEach((row) => {
+    countByVersion.set(row.version_id, (countByVersion.get(row.version_id) ?? 0) + 1);
+  });
 
   return (
     <div>
@@ -39,16 +72,23 @@ export default async function FeedPage() {
         </div>
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {available.map((s) => {
-            const qCount =
-              (Array.isArray(s.questions) ? s.questions[0]?.count : 0) ?? 0;
+          {available.map((v) => {
+            const s = v.surveys!;
+            const qCount = countByVersion.get(v.id) ?? 0;
             return (
-              <li key={s.id}>
+              <li key={v.id}>
                 <Link
                   href={`/s/${s.share_slug}`}
                   className="block h-full rounded-2xl border border-gray-200 bg-white p-4 hover:border-brand-300 hover:shadow-sm"
                 >
-                  <div className="font-semibold">{s.title}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold">{s.title}</div>
+                    {v.version_number > 1 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
+                        v{v.version_number}
+                      </span>
+                    )}
+                  </div>
                   {s.description && (
                     <p className="text-sm text-gray-600 mt-1 line-clamp-3">
                       {s.description}

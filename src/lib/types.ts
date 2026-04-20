@@ -42,12 +42,24 @@ export type Profile = {
 export type Question = {
   id: string;
   survey_id: string;
+  version_id: string;
+  question_group_id: string;
   position: number;
   text: string;
   next_on_yes: string | null;
   next_on_no: string | null;
   end_on_yes: boolean;
   end_on_no: boolean;
+};
+
+export type SurveyVersion = {
+  id: string;
+  survey_id: string;
+  version_number: number;
+  status: "draft" | "open" | "retired";
+  created_at: string;
+  opened_at: string | null;
+  retired_at: string | null;
 };
 
 export type Survey = {

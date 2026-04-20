@@ -42,6 +42,7 @@ Run these in order:
 | 2 | `supabase/migrations/0002_rls.sql`  | Row-level security (who can read/write what) |
 | 3 | `supabase/migrations/0003_ethnicity_seed.sql` | US Census + international race/ethnicity options |
 | 4 | `supabase/migrations/0004_minimal_geo_seed.sql` | ~55 countries, US states, top 80 US cities |
+| 5 | `supabase/migrations/0005_versioning.sql` | Survey versioning + cross-version question linking |
 
 > **Don't want to deal with the CLI for full GeoNames?** You're done after
 > step 4 — you have enough country/state/city data for US-focused testing.
