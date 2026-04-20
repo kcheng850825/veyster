@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getBaseUrl } from "@/lib/base-url";
 import { CopyButton } from "@/components/CopyButton";
 
 export default async function SharePage({
@@ -23,8 +24,7 @@ export default async function SharePage({
 
   if (!survey) notFound();
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const shareUrl = `${baseUrl}/s/${survey.share_slug}`;
+  const shareUrl = `${await getBaseUrl()}/s/${survey.share_slug}`;
   const qrDataUrl = await QRCode.toDataURL(shareUrl, {
     width: 320,
     margin: 1,
