@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getServerSupabase } from "@/lib/supabase/server";
@@ -139,17 +140,30 @@ export default async function AdminPage() {
                         : "—"}
                     </td>
                     <td className="p-3 text-right text-gray-600">
-                      {sessionCountByUser.get(u.id) ?? 0}
+                      <Link
+                        href={`/admin/users/${u.id}`}
+                        className="hover:text-brand-700 hover:underline"
+                      >
+                        {sessionCountByUser.get(u.id) ?? 0}
+                      </Link>
                     </td>
                     <td className="p-3 text-right">
-                      {isSelf ? (
-                        <span className="text-xs text-gray-400">you</span>
-                      ) : (
-                        <form action={deleteUser}>
-                          <input type="hidden" name="userId" value={u.id} />
-                          <DeleteUserButton email={u.email ?? null} />
-                        </form>
-                      )}
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={`/admin/users/${u.id}`}
+                          className="text-xs text-brand-600 hover:text-brand-800 hover:underline"
+                        >
+                          Sessions
+                        </Link>
+                        {isSelf ? (
+                          <span className="text-xs text-gray-400">you</span>
+                        ) : (
+                          <form action={deleteUser}>
+                            <input type="hidden" name="userId" value={u.id} />
+                            <DeleteUserButton email={u.email ?? null} />
+                          </form>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
