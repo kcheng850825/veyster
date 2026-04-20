@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -16,15 +16,93 @@ type Props = {
   verificationFields: VerificationField[];
 };
 
+type Lookups = {
+  country?: string;
+  admin1?: string;
+  city?: string;
+  races?: string[];
+  ethnicities?: string[];
+};
+
 export function StartSurveyForm({ slug, surveyId, versionId, profile, verificationFields }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lookups, setLookups] = useState<Lookups>({});
 
   const needsAll = verificationFields.length > 0;
   const allConfirmed = verificationFields.every((f) => confirmed[f]);
+
+  // Resolve readable labels for country, admin1, city, and ethnicity/race codes.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const next: Lookups = {};
+
+      if (profile.country_code) {
+        const { data } = await supabase
+          .from("countries")
+          .select("name")
+          .eq("code", profile.country_code)
+          .maybeSingle();
+        if (data?.name) next.country = data.name;
+      }
+
+      if (profile.country_code && profile.admin1_code) {
+        const { data } = await supabase
+          .from("admin1")
+          .select("name")
+          .eq("country_code", profile.country_code)
+          .eq("code", profile.admin1_code)
+          .maybeSingle();
+        if (data?.name) next.admin1 = data.name;
+      }
+
+      if (profile.city_geonameid) {
+        const { data } = await supabase
+          .from("cities")
+          .select("name")
+          .eq("geonameid", profile.city_geonameid)
+          .maybeSingle();
+        if (data?.name) next.city = data.name;
+      }
+
+      const allCodes = [...profile.race_codes, ...profile.ethnicity_codes];
+      if (allCodes.length > 0) {
+        // Fetch labels; prefer country-specific rows over international fallback
+        // when both exist for the same code.
+        const { data: catalog } = await supabase
+          .from("ethnicity_catalog")
+          .select("kind, code, label, country_code")
+          .in("code", allCodes)
+          .or(
+            profile.country_code
+              ? `country_code.eq.${profile.country_code},country_code.is.null`
+              : "country_code.is.null",
+          );
+
+        const byCode = new Map<string, { label: string; country_code: string | null }>();
+        for (const row of catalog ?? []) {
+          const existing = byCode.get(row.code);
+          // Keep the first one unless we find a country-specific match
+          if (!existing || (existing.country_code === null && row.country_code !== null)) {
+            byCode.set(row.code, { label: row.label, country_code: row.country_code });
+          }
+        }
+
+        next.races = profile.race_codes.map((c) => byCode.get(c)?.label ?? c);
+        next.ethnicities = profile.ethnicity_codes.map((c) => byCode.get(c)?.label ?? c);
+      }
+
+      if (!cancelled) setLookups(next);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, profile.country_code, profile.admin1_code, profile.city_geonameid, profile.race_codes, profile.ethnicity_codes]);
 
   async function start() {
     setError(null);
@@ -63,7 +141,7 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
           <ul className="mt-3 space-y-2">
             {verificationFields.map((f) => {
               const label = VERIFICATION_FIELDS.find((v) => v.key === f)?.label ?? f;
-              const display = displayValue(f, profile);
+              const display = displayValue(f, profile, lookups);
               return (
                 <li key={f} className="flex items-start gap-2">
                   <input
@@ -112,7 +190,11 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
   );
 }
 
-function displayValue(field: VerificationField, p: Profile): string | null {
+function displayValue(
+  field: VerificationField,
+  p: Profile,
+  l: Lookups,
+): string | null {
   switch (field) {
     case "birth_year":
       return p.birth_year?.toString() ?? null;
@@ -121,14 +203,22 @@ function displayValue(field: VerificationField, p: Profile): string | null {
     case "education":
       return EDUCATION_LEVELS.find((e) => e.value === p.education)?.label ?? null;
     case "country":
-      return p.country_code ?? null;
+      return l.country ?? p.country_code ?? null;
     case "admin1":
-      return p.admin1_code ?? null;
+      return l.admin1 ?? p.admin1_code ?? null;
     case "city":
-      return p.city_geonameid ? `#${p.city_geonameid}` : null;
+      return l.city ?? (p.city_geonameid ? "Loading…" : null);
     case "race":
-      return p.race_codes.length ? p.race_codes.join(", ") : null;
+      return l.races && l.races.length > 0
+        ? l.races.join(", ")
+        : p.race_codes.length > 0
+          ? "Loading…"
+          : null;
     case "ethnicity":
-      return p.ethnicity_codes.length ? p.ethnicity_codes.join(", ") : null;
+      return l.ethnicities && l.ethnicities.length > 0
+        ? l.ethnicities.join(", ")
+        : p.ethnicity_codes.length > 0
+          ? "Loading…"
+          : null;
   }
 }
