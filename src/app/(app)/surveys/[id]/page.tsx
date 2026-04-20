@@ -55,6 +55,7 @@ export default async function SurveyEditorPage({
 
   return (
     <SurveyEditor
+      key={currentVersion.id}
       initialSurvey={survey}
       currentVersion={currentVersion}
       allVersions={allVersions}

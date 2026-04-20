@@ -268,16 +268,18 @@ export function DemographicsForm({ profile, mode }: Props) {
         </Field>
       )}
 
-      {races.length > 0 && (
-        <Field label="Race" hint="Select all that apply">
+      {ethnicities.length > 0 && (
+        <Field label="Ethnicity" hint="Pick one">
           <div className="flex flex-wrap gap-2">
-            {races.map((r) => {
-              const on = raceCodes.includes(r.code);
+            {ethnicities.map((r) => {
+              const on = ethnicityCodes[0] === r.code;
               return (
                 <button
                   key={r.code}
                   type="button"
-                  onClick={() => setRaceCodes(toggle(raceCodes, r.code))}
+                  onClick={() =>
+                    setEthnicityCodes(on ? [] : [r.code])
+                  }
                   className={
                     "px-3 py-1.5 rounded-full text-sm border " +
                     (on
@@ -293,16 +295,16 @@ export function DemographicsForm({ profile, mode }: Props) {
         </Field>
       )}
 
-      {ethnicities.length > 0 && (
-        <Field label="Ethnicity">
+      {races.length > 0 && (
+        <Field label="Race" hint="Select all that apply">
           <div className="flex flex-wrap gap-2">
-            {ethnicities.map((r) => {
-              const on = ethnicityCodes.includes(r.code);
+            {races.map((r) => {
+              const on = raceCodes.includes(r.code);
               return (
                 <button
                   key={r.code}
                   type="button"
-                  onClick={() => setEthnicityCodes(toggle(ethnicityCodes, r.code))}
+                  onClick={() => setRaceCodes(toggle(raceCodes, r.code))}
                   className={
                     "px-3 py-1.5 rounded-full text-sm border " +
                     (on

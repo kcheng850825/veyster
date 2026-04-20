@@ -10,6 +10,7 @@ export async function middleware(req: NextRequest) {
 
   const isProtected =
     pathname.startsWith("/feed") ||
+    pathname.startsWith("/answered") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/surveys") ||
