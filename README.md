@@ -7,6 +7,12 @@ PWA so it installs to home-screen on mobile.
 Stack: Next.js 15 (App Router) + TypeScript + Tailwind + Supabase (Postgres +
 auth + storage), deployed on Vercel.
 
+## Deploying
+
+**For a step-by-step web-UI-only guide** (no CLI, no local Node install),
+read **[DEPLOY.md](./DEPLOY.md)**. The rest of this README is for local
+development.
+
 ## Status
 
 **Walking skeleton — payments / paid-tier targeting not yet implemented.**
