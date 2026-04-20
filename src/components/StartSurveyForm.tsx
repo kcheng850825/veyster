@@ -91,7 +91,7 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
             })}
           </ul>
           <Link
-            href={`/profile`}
+            href={`/profile?next=${encodeURIComponent(`/s/${slug}`)}`}
             className="mt-3 inline-block text-xs text-brand-600 hover:underline"
           >
             Update profile →

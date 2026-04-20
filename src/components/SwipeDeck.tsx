@@ -2,10 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, useMotionValue, useTransform, type PanInfo } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+  type PanInfo,
+  type MotionValue,
+} from "framer-motion";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import type { Answer, Question } from "@/lib/types";
-import { Button } from "@/components/ui/Button";
 
 type Props = {
   slug: string;
@@ -36,7 +42,10 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
       .filter((s) => byId.has(s.questionId)),
   );
   const [done, setDone] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-300, 0, 300], [-18, 0, 18]);
 
   function resolveNext(q: Question, answer: Answer): Question | null {
     if (answer === "yes") {
@@ -49,12 +58,9 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
     return byPosition.get(q.position + 1) ?? null;
   }
 
-  // Derive the current question by replaying history.
   const currentQuestion: Question | null = useMemo(() => {
     if (done) return null;
-    if (history.length === 0) {
-      return sortedQuestions[0] ?? null;
-    }
+    if (history.length === 0) return sortedQuestions[0] ?? null;
     const last = history[history.length - 1];
     const lastQ = byId.get(last.questionId);
     if (!lastQ) return null;
@@ -62,7 +68,6 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history, done, byId, byPosition, sortedQuestions]);
 
-  // When currentQuestion becomes null with non-empty history, we're done.
   useEffect(() => {
     if (!done && history.length > 0 && currentQuestion === null) {
       complete();
@@ -72,41 +77,74 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
 
   async function complete() {
     setDone(true);
-    setSaving(true);
+    setBusy(true);
     await supabase
       .from("survey_sessions")
       .update({ completed_at: new Date().toISOString() })
       .eq("id", sessionId);
-    setSaving(false);
+    setBusy(false);
     router.replace(`/s/${slug}/done`);
   }
 
-  async function recordAnswer(q: Question, answer: Answer) {
-    setSaving(true);
-    await supabase.from("answers").upsert(
-      { session_id: sessionId, question_id: q.id, answer },
+  async function answer(a: Answer) {
+    if (busy || !currentQuestion) return;
+    setBusy(true);
+    const q = currentQuestion;
+
+    // Fling the card off in the direction of the answer, so the user sees
+    // their answer register before the next card replaces it.
+    const flyTo = a === "yes" ? 600 : -600;
+    await animate(x, flyTo, {
+      duration: 0.28,
+      ease: [0.32, 0.72, 0, 1],
+    });
+
+    const { error } = await supabase.from("answers").upsert(
+      { session_id: sessionId, question_id: q.id, answer: a },
       { onConflict: "session_id,question_id" },
     );
-    setHistory((h) => [...h, { questionId: q.id, answer }]);
-    setSaving(false);
+    if (error) {
+      alert(error.message);
+      x.set(0);
+      setBusy(false);
+      return;
+    }
+
+    setHistory((h) => [...h, { questionId: q.id, answer: a }]);
+    // Reset position for the incoming card (which remounts via key below).
+    x.set(0);
+    setBusy(false);
   }
 
   async function undo() {
-    if (history.length === 0) return;
+    if (history.length === 0 || busy) return;
     const last = history[history.length - 1];
-    setSaving(true);
-    await supabase
+    setBusy(true);
+    const { error } = await supabase
       .from("answers")
       .delete()
       .eq("session_id", sessionId)
       .eq("question_id", last.questionId);
+    if (error) {
+      alert(error.message);
+      setBusy(false);
+      return;
+    }
+    x.set(0);
     setHistory((h) => h.slice(0, -1));
-    setSaving(false);
+    setBusy(false);
   }
 
   async function stopHere() {
     if (!confirm("Stop here? You won't be able to continue this survey later.")) return;
     await complete();
+  }
+
+  function onDragEnd(_: unknown, info: PanInfo) {
+    const threshold = 110;
+    if (info.offset.x > threshold) answer("yes");
+    else if (info.offset.x < -threshold) answer("no");
+    else animate(x, 0, { type: "spring", stiffness: 400, damping: 30 });
   }
 
   if (done || !currentQuestion) {
@@ -117,12 +155,7 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
     );
   }
 
-  // Next card (for stacked preview)
-  const nextQ =
-    currentQuestion && history.length > 0
-      ? byPosition.get(currentQuestion.position + 1)
-      : sortedQuestions[1];
-
+  const previewQ = resolveNext(currentQuestion, "yes") ?? byPosition.get(currentQuestion.position + 1);
   const answered = history.length;
   const total = questions.length;
 
@@ -131,7 +164,7 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
       <div className="flex items-center justify-between text-sm mb-2">
         <button
           onClick={undo}
-          disabled={history.length === 0 || saving}
+          disabled={history.length === 0 || busy}
           className="text-gray-500 disabled:opacity-40"
         >
           ← Undo
@@ -139,7 +172,7 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
         <div className="text-gray-500">
           {answered} / {total}
         </div>
-        <button onClick={stopHere} className="text-gray-500">
+        <button onClick={stopHere} className="text-gray-500" disabled={busy}>
           Stop
         </button>
       </div>
@@ -151,51 +184,51 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
         />
       </div>
 
-      <div className="relative flex-1 flex items-center justify-center">
-        {nextQ && (
-          <Card
-            key={nextQ.id + "-bg"}
-            question={nextQ}
-            stackIndex={1}
-          />
+      <div className="relative flex-1 flex items-center justify-center min-h-[280px]">
+        {previewQ && (
+          <PreviewCard key={previewQ.id + "-bg"} question={previewQ} />
         )}
         <SwipeCard
           key={currentQuestion.id}
           question={currentQuestion}
-          onAnswer={(a) => recordAnswer(currentQuestion, a)}
-          disabled={saving}
+          x={x}
+          rotate={rotate}
+          onDragEnd={onDragEnd}
+          disabled={busy}
         />
       </div>
 
-      <div className="mt-6 flex gap-3 justify-center">
-        <Button
-          variant="secondary"
-          onClick={() => recordAnswer(currentQuestion, "no")}
-          disabled={saving}
-          className="flex-1 !bg-red-50 !border-red-200 !text-red-700 hover:!bg-red-100"
+      <div className="mt-6 flex gap-3">
+        <button
+          onClick={() => answer("no")}
+          disabled={busy}
+          className="flex-1 py-4 rounded-2xl bg-red-50 border-2 border-red-200 text-red-700 font-bold text-lg hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
         >
-          No
-        </Button>
-        <Button
-          onClick={() => recordAnswer(currentQuestion, "yes")}
-          disabled={saving}
-          className="flex-1 !bg-emerald-600 hover:!bg-emerald-700"
+          ✕ No
+        </button>
+        <button
+          onClick={() => answer("yes")}
+          disabled={busy}
+          className="flex-1 py-4 rounded-2xl bg-emerald-600 border-2 border-emerald-700 text-white font-bold text-lg hover:bg-emerald-700 active:scale-95 transition disabled:opacity-50"
         >
-          Yes
-        </Button>
+          ✓ Yes
+        </button>
       </div>
+      <p className="text-center text-xs text-gray-400 mt-3">
+        Swipe the card, or tap Yes / No.
+      </p>
     </div>
   );
 }
 
-function Card({ question, stackIndex }: { question: Question; stackIndex: number }) {
+function PreviewCard({ question }: { question: Question }) {
   return (
     <div
       className="absolute inset-x-6 top-0 bottom-0 rounded-3xl bg-white shadow-md border border-gray-200 flex items-center justify-center p-6 pointer-events-none"
       style={{
-        transform: `scale(${1 - stackIndex * 0.04}) translateY(${stackIndex * 8}px)`,
-        zIndex: 10 - stackIndex,
-        opacity: 1 - stackIndex * 0.3,
+        transform: "scale(0.96) translateY(8px)",
+        zIndex: 10,
+        opacity: 0.7,
       }}
     >
       <p className="text-xl text-center font-medium text-gray-400">{question.text}</p>
@@ -205,23 +238,19 @@ function Card({ question, stackIndex }: { question: Question; stackIndex: number
 
 function SwipeCard({
   question,
-  onAnswer,
+  x,
+  rotate,
+  onDragEnd,
   disabled,
 }: {
   question: Question;
-  onAnswer: (a: Answer) => void;
+  x: MotionValue<number>;
+  rotate: MotionValue<number>;
+  onDragEnd: (e: unknown, info: PanInfo) => void;
   disabled?: boolean;
 }) {
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-300, 0, 300], [-18, 0, 18]);
   const yesOpacity = useTransform(x, [20, 120], [0, 1]);
   const noOpacity = useTransform(x, [-120, -20], [1, 0]);
-
-  function onDragEnd(_: unknown, info: PanInfo) {
-    const threshold = 110;
-    if (info.offset.x > threshold) onAnswer("yes");
-    else if (info.offset.x < -threshold) onAnswer("no");
-  }
 
   return (
     <motion.div

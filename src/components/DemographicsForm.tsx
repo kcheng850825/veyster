@@ -192,7 +192,8 @@ export function DemographicsForm({ profile, mode }: Props) {
     if (error) return setError(error.message);
 
     const next = searchParams.get("next");
-    router.replace(mode === "onboarding" ? (next || "/feed") : "/profile");
+    const defaultLanding = mode === "onboarding" ? "/feed" : "/profile";
+    router.replace(next || defaultLanding);
     router.refresh();
   }
 
