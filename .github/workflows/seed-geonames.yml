@@ -1,0 +1,38 @@
+name: Seed GeoNames cities
+
+# Run this once after creating your Supabase project. Populates countries,
+# admin1 regions, and ~26,000 cities with population > 15k from GeoNames.
+# No terminal needed — use the "Run workflow" button in the Actions tab.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "YES" to confirm. This will overwrite existing city data.'
+        required: true
+        default: 'NO'
+
+jobs:
+  seed:
+    if: ${{ inputs.confirm == 'YES' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run GeoNames import
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx scripts/import-geonames.ts
+
+      - name: Summary
+        run: echo "Done. Check your Supabase project -> Table editor -> cities to see the new rows."

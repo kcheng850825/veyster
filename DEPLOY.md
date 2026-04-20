@@ -228,20 +228,43 @@ project → Deployments → latest → **Runtime Logs**).
 
 ## 9. (Optional) Full GeoNames import for worldwide cities
 
-You only need this if you want cities outside the top 80 US cities. This
-step needs your laptop for 5 minutes.
+You only need this if you want cities outside the top 80 US cities.
+
+### Option A — GitHub Actions (no terminal, no laptop setup — recommended)
+
+1. **Add repo secrets** (one-time):
+   - Go to your repo → **Settings → Secrets and variables → Actions**
+   - Click **New repository secret** and add:
+     - Name: `SUPABASE_URL` — Value: your Supabase project URL (e.g. `https://xxxxx.supabase.co`)
+   - Click **New repository secret** again and add:
+     - Name: `SUPABASE_SERVICE_ROLE_KEY` — Value: your `service_role` key
+       from Supabase → Project Settings → API (click to reveal).
+
+2. **Run the workflow**:
+   - Go to the **Actions** tab of your repo
+   - In the left sidebar click **Seed GeoNames cities**
+   - Click **Run workflow** (right side), select the branch
+     `claude/survey-pwa-swipe-XBOr0`, type `YES` in the confirm box, click the
+     green **Run workflow** button
+   - Wait ~3 minutes. A green check means done. Click the run to see the log
+     with row counts.
+   - In Supabase → Table editor → `cities`, you should now see ~26,000 rows.
+
+The workflow is idempotent (upserts by `geonameid`), so it's safe to re-run
+anytime — e.g. GeoNames releases new dumps monthly and re-running picks up
+new cities and population updates.
+
+### Option B — your laptop (if you already use a terminal)
 
 1. Install Node.js 20+ from https://nodejs.org if you don't already have it.
-2. Download the repo as a zip: GitHub → repo → **Code → Download ZIP** — or
-   clone with GitHub Desktop (https://desktop.github.com).
-3. Open a terminal in the unzipped folder and run:
+2. Clone the repo (via GitHub Desktop at https://desktop.github.com or git CLI).
+3. Open a terminal in the folder and run:
 
    ```bash
    npm install
-   npm i -D adm-zip
    ```
 
-4. Create a file called `.env.local` in that folder with:
+4. Create a `.env.local` file in that folder with:
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co

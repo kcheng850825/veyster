@@ -61,10 +61,7 @@ async function main() {
 
   if (!(await exists(citiesTxt))) {
     console.log("↻ unzipping cities15000.zip");
-    const { default: AdmZip } = await import("adm-zip").catch(() => {
-      console.error("Missing `adm-zip`. Install with: npm i -D adm-zip");
-      process.exit(1);
-    });
+    const AdmZip = (await import("adm-zip")).default;
     const zip = new AdmZip(citiesZip);
     zip.extractAllTo(CACHE, true);
   }
