@@ -84,24 +84,47 @@ export function DemographicsForm({ profile, mode }: Props) {
       });
   }, [profile.city_geonameid, supabase, city]);
 
-  // City typeahead
+  // City typeahead. Two-stage: first try with admin1 filter if set, then
+  // fall back to country-only so the user isn't blocked by an admin1 mismatch
+  // (e.g. they picked "NY" as state but their city's geonames admin1 is spelled
+  // differently). Uses substring match so "oston" finds "Boston" too.
+  const [citySearchLoading, setCitySearchLoading] = useState(false);
+  const [citySearchRan, setCitySearchRan] = useState(false);
+
   useEffect(() => {
     if (!countryCode || cityQuery.length < 2) {
       setCityResults([]);
+      setCitySearchRan(false);
       return;
     }
     const h = setTimeout(async () => {
+      setCitySearchLoading(true);
+      setCitySearchRan(false);
+      const escaped = cityQuery.replace(/[%_]/g, "\\$&");
       let q = supabase
         .from("cities")
-        .select("geonameid, name")
+        .select("geonameid, name, admin1_code")
         .eq("country_code", countryCode)
-        .ilike("name", `${cityQuery}%`)
+        .ilike("name", `%${escaped}%`)
         .order("population", { ascending: false })
-        .limit(8);
+        .limit(12);
       if (admin1Code) q = q.eq("admin1_code", admin1Code);
-      const { data } = await q;
+      let { data } = await q;
+      if ((!data || data.length === 0) && admin1Code) {
+        // Retry without the admin1 filter
+        const { data: broader } = await supabase
+          .from("cities")
+          .select("geonameid, name, admin1_code")
+          .eq("country_code", countryCode)
+          .ilike("name", `%${escaped}%`)
+          .order("population", { ascending: false })
+          .limit(12);
+        data = broader;
+      }
       setCityResults(data ?? []);
-    }, 150);
+      setCitySearchLoading(false);
+      setCitySearchRan(true);
+    }, 180);
     return () => clearTimeout(h);
   }, [cityQuery, countryCode, admin1Code, supabase]);
 
@@ -234,7 +257,14 @@ export function DemographicsForm({ profile, mode }: Props) {
       )}
 
       {countryCode && (
-        <Field label="City" hint="Type at least 2 letters">
+        <Field
+          label="City"
+          hint={
+            city
+              ? "Tap the field and re-type to change your selection."
+              : "Pick one from the dropdown — free-text entries aren't saved."
+          }
+        >
           <div className="relative">
             <Input
               value={cityQuery}
@@ -245,24 +275,39 @@ export function DemographicsForm({ profile, mode }: Props) {
               placeholder="Search your city…"
               autoComplete="off"
             />
-            {cityResults.length > 0 && !city && (
-              <ul className="absolute z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg max-h-60 overflow-auto">
-                {cityResults.map((c) => (
-                  <li key={c.geonameid}>
-                    <button
-                      type="button"
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50"
-                      onClick={() => {
-                        setCity(c);
-                        setCityQuery(c.name);
-                        setCityResults([]);
-                      }}
-                    >
-                      {c.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            {!city && cityQuery.length >= 2 && (
+              <div className="absolute z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg max-h-60 overflow-auto">
+                {citySearchLoading ? (
+                  <div className="px-3 py-2 text-sm text-gray-400">Searching…</div>
+                ) : cityResults.length > 0 ? (
+                  <ul>
+                    {cityResults.map((c) => (
+                      <li key={c.geonameid}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                          onClick={() => {
+                            setCity(c);
+                            setCityQuery(c.name);
+                            setCityResults([]);
+                          }}
+                        >
+                          {c.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : citySearchRan ? (
+                  <div className="px-3 py-2 text-xs text-gray-500 space-y-1">
+                    <div>No matches for &quot;{cityQuery}&quot; in the selected country.</div>
+                    <div>
+                      Only the top ~80 US cities ship with the app by default. If yours
+                      isn&apos;t here, pick a nearby larger city — or skip this field; it&apos;s
+                      optional.
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             )}
           </div>
         </Field>
