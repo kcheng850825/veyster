@@ -43,19 +43,29 @@ function LoginInner() {
     setError(null);
     setLoading(true);
     const supabase = getBrowserSupabase();
-    const { error } = await supabase.auth.verifyOtp({
+    const { data: verifyData, error } = await supabase.auth.verifyOtp({
       email,
       token: code,
       type: "email",
     });
-    setLoading(false);
-    if (error) return setError(error.message);
+    if (error) {
+      setLoading(false);
+      return setError(error.message);
+    }
 
-    // Check if profile is onboarded; otherwise route to onboarding.
+    // First-time users: create their profile row (previously done by a DB
+    // trigger, now done here because Supabase's SQL Editor parser doesn't
+    // handle plpgsql cleanly).
+    const userId = verifyData.user?.id;
+    if (userId) {
+      await supabase.from("profiles").upsert({ id: userId }, { onConflict: "id" });
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarded_at")
       .maybeSingle();
+    setLoading(false);
     router.replace(profile?.onboarded_at ? next : "/onboarding");
     router.refresh();
   }

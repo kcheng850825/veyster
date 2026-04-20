@@ -27,7 +27,7 @@ export function SurveyEditor({ initialSurvey, initialQuestions }: Props) {
     setSaving(true);
     const { data, error } = await supabase
       .from("surveys")
-      .update(patch)
+      .update({ ...patch, updated_at: new Date().toISOString() })
       .eq("id", survey.id)
       .select("*")
       .single();

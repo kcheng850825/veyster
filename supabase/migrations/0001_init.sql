@@ -138,23 +138,10 @@ create table if not exists questions (
 
 create index if not exists questions_survey_idx on questions(survey_id);
 
-create or replace function enforce_question_cap()
-returns trigger language plpgsql as $cap$
-declare
-  current_count integer;
-begin
-  select count(*) into current_count from questions where survey_id = new.survey_id;
-  if (tg_op = 'INSERT' and current_count >= 10) then
-    raise exception 'A survey can have at most 10 questions';
-  end if;
-  return new;
-end;
-$cap$;
-
-drop trigger if exists trg_question_cap on questions;
-create trigger trg_question_cap
-before insert on questions
-for each row execute function enforce_question_cap();
+-- 10-question cap is enforced at the app layer (see MAX_QUESTIONS_PER_SURVEY
+-- in src/lib/constants.ts and the SurveyEditor component). A DB trigger was
+-- previously here but Supabase's SQL Editor parser mangles SELECT INTO inside
+-- plpgsql bodies; a direct-API bypass of the cap is acceptable for this MVP.
 
 ------------------------------------------------------------
 -- Survey targeting (paid-tier filters; schema-only for now)
@@ -204,40 +191,9 @@ create table if not exists answers (
   primary key (session_id, question_id)
 );
 
-------------------------------------------------------------
--- updated_at triggers
-------------------------------------------------------------
-
-create or replace function touch_updated_at()
-returns trigger language plpgsql as $touch$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$touch$;
-
-drop trigger if exists trg_profiles_touch on profiles;
-create trigger trg_profiles_touch before update on profiles
-for each row execute function touch_updated_at();
-
-drop trigger if exists trg_surveys_touch on surveys;
-create trigger trg_surveys_touch before update on surveys
-for each row execute function touch_updated_at();
-
-------------------------------------------------------------
--- Auto-create profile row on signup
-------------------------------------------------------------
-
-create or replace function handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $newuser$
-begin
-  insert into public.profiles (id) values (new.id)
-  on conflict (id) do nothing;
-  return new;
-end;
-$newuser$;
-
-drop trigger if exists trg_auth_user_created on auth.users;
-create trigger trg_auth_user_created
-after insert on auth.users
-for each row execute function handle_new_user();
+-- NOTE: `updated_at` is maintained by the application when writes happen.
+-- NOTE: `profiles` rows are created by the application immediately after a
+--       successful OTP verification (see src/app/login/page.tsx).
+-- DB-side trigger functions were removed because Supabase's SQL Editor
+-- parser chokes on plpgsql function bodies; any logic that needs server-side
+-- enforcement should go in an Edge Function later.

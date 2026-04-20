@@ -151,10 +151,11 @@ export function DemographicsForm({ profile, mode }: Props) {
       return;
     }
     setSaving(true);
-    const payload: Partial<Profile> & { onboarded_at?: string } = {
+    const payload: Partial<Profile> & { onboarded_at?: string; updated_at?: string } = {
       birth_year: parseInt(birthYear, 10),
       gender: gender as Profile["gender"],
       education: education as Profile["education"],
+      updated_at: new Date().toISOString(),
       country_code: countryCode,
       admin1_code: admin1Code || null,
       city_geonameid: city?.geonameid ?? null,
