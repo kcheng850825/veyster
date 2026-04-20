@@ -3,7 +3,6 @@
 
 create extension if not exists pgcrypto;
 create extension if not exists "uuid-ossp";
-create extension if not exists pg_trgm;
 
 ------------------------------------------------------------
 -- Geography (seeded from GeoNames)
@@ -32,7 +31,6 @@ create table if not exists cities (
   lon           numeric(9,6)
 );
 create index if not exists cities_country_admin_idx on cities(country_code, admin1_code);
-create index if not exists cities_name_trgm_idx on cities using gin (name gin_trgm_ops);
 
 ------------------------------------------------------------
 -- Ethnicity catalog (location-aware)
