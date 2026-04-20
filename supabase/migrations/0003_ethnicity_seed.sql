@@ -2,6 +2,12 @@
 -- International fallback (country_code NULL) + US Census categories.
 -- Add more country-specific sets (UK, CA, etc.) as follow-ups.
 
+-- Ensure the referenced country rows exist, in case this seed runs before
+-- 0004_minimal_geo_seed.sql. (0004 upserts these, so re-running is safe.)
+insert into countries (code, name) values
+  ('US','United States')
+on conflict (code) do nothing;
+
 insert into ethnicity_catalog (country_code, kind, code, label, sort_order) values
   -- INTERNATIONAL FALLBACK (shown when country not covered)
   (null, 'race', 'african',              'African / Black',           10),
