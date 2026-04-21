@@ -160,31 +160,35 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
   const total = questions.length;
 
   return (
-    <div className="min-h-screen flex flex-col px-4 pt-4 pb-6">
-      <div className="flex items-center justify-between text-sm mb-2">
+    <div className="min-h-screen flex flex-col px-4 pt-5 pb-6 max-w-md mx-auto">
+      <div className="flex items-center justify-between text-sm mb-3">
         <button
           onClick={undo}
           disabled={history.length === 0 || busy}
-          className="text-gray-500 disabled:opacity-40"
+          className="text-ink-500 hover:text-ink-700 disabled:opacity-40 font-medium"
         >
           ← Undo
         </button>
-        <div className="text-gray-500">
+        <div className="chip chip-muted font-mono">
           {answered} / {total}
         </div>
-        <button onClick={stopHere} className="text-gray-500" disabled={busy}>
+        <button
+          onClick={stopHere}
+          className="text-ink-500 hover:text-ink-700 font-medium"
+          disabled={busy}
+        >
           Stop
         </button>
       </div>
 
-      <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden mb-6">
+      <div className="h-1.5 w-full bg-ink-100 rounded-full overflow-hidden mb-8">
         <div
-          className="h-full bg-brand-500 transition-all"
+          className="h-full bg-brand-gradient transition-all"
           style={{ width: `${(answered / Math.max(total, 1)) * 100}%` }}
         />
       </div>
 
-      <div className="relative flex-1 flex items-center justify-center min-h-[280px]">
+      <div className="relative flex-1 flex items-center justify-center min-h-[360px]">
         {previewQ && (
           <PreviewCard key={previewQ.id + "-bg"} question={previewQ} />
         )}
@@ -198,24 +202,24 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
         />
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-8 flex gap-3">
         <button
           onClick={() => answer("no")}
           disabled={busy}
-          className="flex-1 py-4 rounded-2xl bg-red-50 border-2 border-red-200 text-red-700 font-bold text-lg hover:bg-red-100 active:scale-95 transition disabled:opacity-50"
+          className="flex-1 py-4 rounded-full bg-white border-2 border-no-200 text-no-700 font-bold text-lg hover:bg-no-50 active:scale-95 transition disabled:opacity-50 shadow-soft"
         >
           ✕ No
         </button>
         <button
           onClick={() => answer("yes")}
           disabled={busy}
-          className="flex-1 py-4 rounded-2xl bg-emerald-600 border-2 border-emerald-700 text-white font-bold text-lg hover:bg-emerald-700 active:scale-95 transition disabled:opacity-50"
+          className="flex-1 py-4 rounded-full bg-yes-500 border-2 border-yes-600 text-white font-bold text-lg hover:bg-yes-600 active:scale-95 transition disabled:opacity-50 shadow-pop"
         >
           ✓ Yes
         </button>
       </div>
-      <p className="text-center text-xs text-gray-400 mt-3">
-        Swipe the card, or tap Yes / No.
+      <p className="text-center text-xs text-ink-400 mt-3">
+        Swipe or tap — your pick.
       </p>
     </div>
   );
@@ -224,14 +228,14 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
 function PreviewCard({ question }: { question: Question }) {
   return (
     <div
-      className="absolute inset-x-6 top-0 bottom-0 rounded-3xl bg-white shadow-md border border-gray-200 flex items-center justify-center p-6 pointer-events-none"
+      className="absolute inset-x-4 top-0 bottom-0 rounded-3xl bg-white shadow-soft border border-ink-100 flex items-center justify-center p-8 pointer-events-none"
       style={{
         transform: "scale(0.96) translateY(8px)",
         zIndex: 10,
-        opacity: 0.7,
+        opacity: 0.65,
       }}
     >
-      <p className="text-xl text-center font-medium text-gray-400">{question.text}</p>
+      <p className="font-serif text-2xl text-center text-ink-400">{question.text}</p>
     </div>
   );
 }
@@ -254,7 +258,7 @@ function SwipeCard({
 
   return (
     <motion.div
-      className="absolute inset-x-6 top-0 bottom-0 rounded-3xl bg-white shadow-xl border border-gray-200 flex items-center justify-center p-8 cursor-grab active:cursor-grabbing"
+      className="absolute inset-x-4 top-0 bottom-0 rounded-3xl bg-white shadow-pop border border-ink-100 flex items-center justify-center p-10 cursor-grab active:cursor-grabbing overflow-hidden"
       style={{ x, rotate, zIndex: 20, touchAction: "pan-y" }}
       drag={disabled ? false : "x"}
       dragConstraints={{ left: 0, right: 0 }}
@@ -262,19 +266,28 @@ function SwipeCard({
       onDragEnd={onDragEnd}
       whileTap={{ cursor: "grabbing" }}
     >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(122,102,251,0.06) 0%, rgba(255,159,109,0.04) 100%)",
+        }}
+      />
       <motion.div
         style={{ opacity: yesOpacity }}
-        className="absolute top-6 left-6 rotate-[-12deg] border-4 border-emerald-500 text-emerald-500 font-extrabold text-2xl px-3 py-1 rounded-lg"
+        className="absolute top-8 left-8 rotate-[-12deg] border-4 border-yes-500 text-yes-600 font-extrabold text-2xl px-3 py-1 rounded-xl bg-yes-50"
       >
         YES
       </motion.div>
       <motion.div
         style={{ opacity: noOpacity }}
-        className="absolute top-6 right-6 rotate-[12deg] border-4 border-red-500 text-red-500 font-extrabold text-2xl px-3 py-1 rounded-lg"
+        className="absolute top-8 right-8 rotate-[12deg] border-4 border-no-500 text-no-600 font-extrabold text-2xl px-3 py-1 rounded-xl bg-no-50"
       >
         NO
       </motion.div>
-      <p className="text-2xl text-center font-medium">{question.text}</p>
+      <p className="font-serif text-[2rem] leading-tight text-center text-ink-900 relative">
+        {question.text}
+      </p>
     </motion.div>
   );
 }

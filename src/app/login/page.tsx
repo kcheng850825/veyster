@@ -91,12 +91,24 @@ function LoginInner() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-brand-600 mb-2">{BRAND.name}</h1>
-        <p className="text-gray-500 mb-8 text-sm">
+    <main className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden">
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 rounded-full bg-brand-300/30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -left-16 w-96 h-96 rounded-full bg-accent-300/30 blur-3xl" />
+
+      <div className="w-full max-w-sm animate-fade-up relative">
+        <div className="flex items-center gap-2 mb-8">
+          <span className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-brand-gradient shadow-soft">
+            <span className="text-white font-bold">V</span>
+          </span>
+          <span className="font-semibold text-ink-900 text-lg">{BRAND.name}</span>
+        </div>
+
+        <h1 className="font-serif text-display-sm text-ink-900 mb-2">
+          {stage === "email" ? "Welcome" : "Check your inbox"}
+        </h1>
+        <p className="text-ink-600 mb-8 text-sm">
           {stage === "email"
-            ? "Enter your email to get a 6-digit sign-in code."
+            ? "Enter your email and we'll send a one-time code."
             : `We sent a 6-digit code to ${email}.`}
         </p>
 
@@ -108,12 +120,12 @@ function LoginInner() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="rounded-xl border border-gray-300 px-4 py-3 focus:border-brand-500 focus:outline-none"
+              className="rounded-2xl border border-ink-200 bg-white/90 px-4 py-3.5 text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
               autoFocus
             />
             <button
               disabled={loading}
-              className="rounded-xl bg-brand-600 text-white px-4 py-3 font-medium disabled:opacity-50"
+              className="rounded-full text-white bg-brand-gradient shadow-pop px-4 py-3.5 font-medium disabled:opacity-50 active:scale-[0.98] transition"
             >
               {loading ? "Sending…" : "Send code"}
             </button>
@@ -127,13 +139,13 @@ function LoginInner() {
               required
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              className="rounded-xl border border-gray-300 px-4 py-3 text-center text-2xl tracking-[0.5em] focus:border-brand-500 focus:outline-none"
+              placeholder="••••••"
+              className="rounded-2xl border border-ink-200 bg-white/90 px-4 py-3.5 text-center text-3xl tracking-[0.5em] font-mono text-ink-900 placeholder:text-ink-300 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-100"
               autoFocus
             />
             <button
               disabled={loading || code.length !== 6}
-              className="rounded-xl bg-brand-600 text-white px-4 py-3 font-medium disabled:opacity-50"
+              className="rounded-full text-white bg-brand-gradient shadow-pop px-4 py-3.5 font-medium disabled:opacity-50 active:scale-[0.98] transition"
             >
               {loading ? "Verifying…" : "Sign in"}
             </button>
@@ -143,7 +155,7 @@ function LoginInner() {
                 setStage("email");
                 setCode("");
               }}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-ink-500 hover:text-ink-700 mt-1"
             >
               Use a different email
             </button>
@@ -151,9 +163,9 @@ function LoginInner() {
         )}
 
         {error && (
-          <p className="mt-4 text-sm text-red-600" role="alert">
+          <div className="mt-4 text-sm text-no-700 bg-no-50 border border-no-100 rounded-2xl px-4 py-3" role="alert">
             {error}
-          </p>
+          </div>
         )}
       </div>
     </main>

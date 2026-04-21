@@ -12,7 +12,11 @@ body {
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-canvas text-ink-700 antialiased font-sans;
+  background-image:
+    radial-gradient(1200px 500px at 10% -10%, rgba(122, 102, 251, 0.12), transparent 60%),
+    radial-gradient(900px 400px at 110% 10%, rgba(255, 111, 31, 0.10), transparent 55%);
+  background-attachment: fixed;
   overscroll-behavior-y: contain;
 }
 
@@ -20,4 +24,27 @@ button,
 [role="button"] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+/* Subtle ink selection color that matches the brand */
+::selection {
+  background: rgba(91, 71, 240, 0.22);
+  color: inherit;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-3xl border border-ink-100 shadow-soft;
+  }
+  .card-pop {
+    @apply bg-white rounded-3xl border border-ink-100 shadow-pop;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  .chip-brand   { @apply bg-brand-50 text-brand-700 border border-brand-100; }
+  .chip-accent  { @apply bg-accent-50 text-accent-600 border border-accent-100; }
+  .chip-yes     { @apply bg-yes-50 text-yes-700 border border-yes-100; }
+  .chip-no      { @apply bg-no-50  text-no-700  border border-no-100; }
+  .chip-muted   { @apply bg-ink-50 text-ink-600 border border-ink-100; }
 }

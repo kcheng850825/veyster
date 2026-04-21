@@ -55,22 +55,28 @@ export function AppNav({ superadmin = false }: { superadmin?: boolean }) {
   const tabs = TABS_BY_MODE[mode];
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
+    <header className="sticky top-0 z-40 bg-canvas/80 backdrop-blur border-b border-ink-100">
       <div className="mx-auto max-w-3xl px-4">
-        <div className="flex items-center justify-between h-14">
-          <Link href={mode === "researcher" ? "/surveys" : "/feed"} className="text-lg font-bold text-brand-600">
+        <div className="flex items-center justify-between h-16">
+          <Link
+            href={mode === "researcher" ? "/surveys" : "/feed"}
+            className="flex items-center gap-2 font-semibold text-ink-900"
+          >
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-brand-gradient shadow-soft">
+              <span className="text-white font-bold text-sm">V</span>
+            </span>
             {BRAND.name}
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <ModeSwitcher current={mode} onSwitch={switchMode} />
             {superadmin && (
               <Link
                 href="/admin"
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium",
+                  "px-3 py-1.5 rounded-full text-sm font-medium transition",
                   pathname.startsWith("/admin")
-                    ? "bg-red-50 text-red-700"
-                    : "text-red-600 hover:bg-red-50",
+                    ? "bg-no-50 text-no-700 border border-no-100"
+                    : "text-no-600 hover:bg-no-50",
                 )}
                 title="Superadmin"
               >
@@ -80,10 +86,10 @@ export function AppNav({ superadmin = false }: { superadmin?: boolean }) {
             <Link
               href="/profile"
               className={clsx(
-                "px-3 py-1.5 rounded-lg text-sm font-medium",
+                "px-3 py-1.5 rounded-full text-sm font-medium transition",
                 pathname.startsWith("/profile")
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-gray-600 hover:bg-gray-100",
+                  ? "bg-brand-50 text-brand-700 border border-brand-100"
+                  : "text-ink-600 hover:bg-ink-50",
               )}
             >
               Profile
@@ -91,7 +97,7 @@ export function AppNav({ superadmin = false }: { superadmin?: boolean }) {
             <form action="/logout" method="post">
               <button
                 type="submit"
-                className="px-3 py-1.5 rounded-lg text-sm text-gray-500 hover:bg-gray-100"
+                className="px-3 py-1.5 rounded-full text-sm text-ink-500 hover:bg-ink-50 transition"
               >
                 Sign out
               </button>
@@ -106,10 +112,10 @@ export function AppNav({ superadmin = false }: { superadmin?: boolean }) {
                 key={t.href}
                 href={t.href}
                 className={clsx(
-                  "px-3 py-2 text-sm font-medium border-b-2 transition",
+                  "px-4 py-2.5 text-sm font-medium border-b-2 transition",
                   active
                     ? "border-brand-500 text-brand-700"
-                    : "border-transparent text-gray-500 hover:text-gray-700",
+                    : "border-transparent text-ink-500 hover:text-ink-800",
                 )}
               >
                 {t.label}
@@ -124,15 +130,15 @@ export function AppNav({ superadmin = false }: { superadmin?: boolean }) {
 
 function ModeSwitcher({ current, onSwitch }: { current: Mode; onSwitch: (m: Mode) => void }) {
   return (
-    <div className="inline-flex bg-gray-100 rounded-lg p-0.5 text-xs">
+    <div className="inline-flex bg-ink-100 rounded-full p-1 text-xs">
       <button
         type="button"
         onClick={() => onSwitch("respondent")}
         className={clsx(
-          "px-3 py-1 rounded-md transition",
+          "px-3 py-1.5 rounded-full transition font-medium",
           current === "respondent"
-            ? "bg-white text-brand-700 shadow-sm font-medium"
-            : "text-gray-600 hover:text-gray-800",
+            ? "bg-white text-brand-700 shadow-sm"
+            : "text-ink-600 hover:text-ink-800",
         )}
       >
         Respondent
@@ -141,10 +147,10 @@ function ModeSwitcher({ current, onSwitch }: { current: Mode; onSwitch: (m: Mode
         type="button"
         onClick={() => onSwitch("researcher")}
         className={clsx(
-          "px-3 py-1 rounded-md transition",
+          "px-3 py-1.5 rounded-full transition font-medium",
           current === "researcher"
-            ? "bg-white text-brand-700 shadow-sm font-medium"
-            : "text-gray-600 hover:text-gray-800",
+            ? "bg-white text-brand-700 shadow-sm"
+            : "text-ink-600 hover:text-ink-800",
         )}
       >
         Researcher

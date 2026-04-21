@@ -61,17 +61,18 @@ export default async function FeedPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Feed</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Surveys open to anyone. Swipe yes or no.
+      <h1 className="font-serif text-display-sm text-ink-900 mb-1">Feed</h1>
+      <p className="text-sm text-ink-600 mb-6">
+        Open surveys from the community. Tap to start swiping.
       </p>
 
       {available.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-500">
-          No surveys available right now. Check back soon.
+        <div className="card p-10 text-center text-ink-500 border-dashed">
+          <div className="text-4xl mb-2">📭</div>
+          Nothing waiting right now. Come back later.
         </div>
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {available.map((v) => {
             const s = v.surveys!;
             const qCount = countByVersion.get(v.id) ?? 0;
@@ -79,23 +80,27 @@ export default async function FeedPage() {
               <li key={v.id}>
                 <Link
                   href={`/s/${s.share_slug}`}
-                  className="block h-full rounded-2xl border border-gray-200 bg-white p-4 hover:border-brand-300 hover:shadow-sm"
+                  className="block h-full card hover:shadow-pop hover:-translate-y-0.5 transition p-5"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold">{s.title}</div>
+                    <div className="font-serif text-xl text-ink-900 leading-tight">
+                      {s.title}
+                    </div>
                     {v.version_number > 1 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
+                      <span className="chip chip-brand font-mono">
                         v{v.version_number}
                       </span>
                     )}
                   </div>
                   {s.description && (
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-3">
+                    <p className="text-sm text-ink-600 mt-2 line-clamp-3">
                       {s.description}
                     </p>
                   )}
-                  <div className="mt-3 text-xs text-gray-500">
-                    {qCount} yes/no question{qCount === 1 ? "" : "s"}
+                  <div className="mt-4 flex items-center gap-2 text-xs text-ink-500">
+                    <span className="chip chip-muted">
+                      {qCount} question{qCount === 1 ? "" : "s"}
+                    </span>
                   </div>
                 </Link>
               </li>
