@@ -53,30 +53,41 @@ function LoginInner() {
       return setError(error.message);
     }
 
-    // First-time users: create their profile row (previously done by a DB
-    // trigger, now done here because Supabase's SQL Editor parser doesn't
-    // handle plpgsql cleanly).
-    const userId = verifyData.user?.id;
-    if (userId) {
-      const { error: upsertError } = await supabase
-        .from("profiles")
-        .upsert({ id: userId }, { onConflict: "id" });
-      if (upsertError) {
-        setLoading(false);
-        return setError(
-          `Couldn't create your profile: ${upsertError.message}. This usually means the profiles table or its RLS policies are missing — re-run the SQL migrations.`,
-        );
-      }
+    // Fall back to auth.getUser() if verifyOtp didn't surface the user object,
+    // so subsequent RLS-gated queries always run with a known user id.
+    let userId = verifyData.user?.id;
+    if (!userId) {
+      const { data: u } = await supabase.auth.getUser();
+      userId = u.user?.id;
+    }
+    if (!userId) {
+      setLoading(false);
+      return setError(
+        "Signed in, but couldn't read your session. Refresh and try again.",
+      );
+    }
+
+    const { error: upsertError } = await supabase
+      .from("profiles")
+      .upsert({ id: userId }, { onConflict: "id" });
+    if (upsertError) {
+      setLoading(false);
+      return setError(
+        `Couldn't create your profile: ${upsertError.message}. This usually means the profiles table or its RLS policies are missing — re-run the SQL migrations.`,
+      );
     }
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarded_at")
-      .eq("id", userId!)
+      .eq("id", userId)
       .maybeSingle();
+
     setLoading(false);
-    router.replace(profile?.onboarded_at ? next : "/onboarding");
-    router.refresh();
+    // Full-page navigation so the freshly-set Supabase session cookies are
+    // read by the server on the very first request to the target page,
+    // avoiding a stale router cache that can make the transition appear stuck.
+    window.location.assign(profile?.onboarded_at ? next : "/onboarding");
   }
 
   return (
