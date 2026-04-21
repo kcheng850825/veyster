@@ -7,6 +7,7 @@ import { EDUCATION_LEVELS, GENDERS, MIN_RESPONDENT_AGE } from "@/lib/constants";
 import type { Profile } from "@/lib/types";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { MultiSelectDropdown } from "@/components/MultiSelectDropdown";
 
 type Props = {
   profile: Profile;
@@ -316,53 +317,34 @@ export function DemographicsForm({ profile, mode }: Props) {
 
       {ethnicities.length > 0 && (
         <Field label="Ethnicity" hint="Pick one">
-          <div className="flex flex-wrap gap-2">
-            {ethnicities.map((r) => {
-              const on = ethnicityCodes[0] === r.code;
-              return (
-                <button
-                  key={r.code}
-                  type="button"
-                  onClick={() =>
-                    setEthnicityCodes(on ? [] : [r.code])
-                  }
-                  className={
-                    "px-3 py-1.5 rounded-full text-sm border " +
-                    (on
-                      ? "bg-brand-50 border-brand-500 text-brand-700"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50")
-                  }
-                >
-                  {r.label}
-                </button>
-              );
-            })}
-          </div>
+          <Select
+            value={ethnicityCodes[0] ?? ""}
+            onChange={(e) =>
+              setEthnicityCodes(e.target.value ? [e.target.value] : [])
+            }
+          >
+            <option value="">Select…</option>
+            {ethnicities.map((r) => (
+              <option key={r.code} value={r.code}>
+                {r.label}
+              </option>
+            ))}
+          </Select>
         </Field>
       )}
 
       {races.length > 0 && (
-        <Field label="Race" hint="Select all that apply">
-          <div className="flex flex-wrap gap-2">
-            {races.map((r) => {
-              const on = raceCodes.includes(r.code);
-              return (
-                <button
-                  key={r.code}
-                  type="button"
-                  onClick={() => setRaceCodes(toggle(raceCodes, r.code))}
-                  className={
-                    "px-3 py-1.5 rounded-full text-sm border " +
-                    (on
-                      ? "bg-brand-50 border-brand-500 text-brand-700"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50")
-                  }
-                >
-                  {r.label}
-                </button>
-              );
-            })}
-          </div>
+        <Field
+          label="Race"
+          hint='Select all that apply. "Prefer not to say" clears other choices.'
+        >
+          <MultiSelectDropdown
+            options={races.map((r) => ({ code: r.code, label: r.label }))}
+            selected={raceCodes}
+            onChange={setRaceCodes}
+            placeholder="Select one or more…"
+            exclusiveCode="prefer_not"
+          />
         </Field>
       )}
 

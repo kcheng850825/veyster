@@ -103,7 +103,7 @@ function LoginInner() {
           <span className="font-semibold text-ink-900 text-lg">{BRAND.name}</span>
         </div>
 
-        <h1 className="font-serif text-display-sm text-ink-900 mb-2">
+        <h1 className="text-display-sm font-semibold text-ink-900 mb-2">
           {stage === "email" ? "Welcome" : "Check your inbox"}
         </h1>
         <p className="text-ink-600 mb-8 text-sm">

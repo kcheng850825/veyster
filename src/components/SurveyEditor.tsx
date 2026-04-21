@@ -234,15 +234,17 @@ export function SurveyEditor({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wide text-ink-500 truncate">
               {survey.title}
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <h1 className="text-2xl font-bold">v{version.version_number}</h1>
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-ink-900">
+                v{version.version_number}
+              </h1>
               <StatusBadge status={version.status} />
             </div>
           </div>
@@ -251,7 +253,7 @@ export function SurveyEditor({
               <Select
                 value={version.id}
                 onChange={(e) => switchVersion(e.target.value)}
-                className="!py-1.5"
+                className="!py-1.5 !w-auto"
               >
                 {allVersions.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -261,27 +263,27 @@ export function SurveyEditor({
               </Select>
             )}
             {version.status === "draft" && (
-              <Button onClick={publishVersion} disabled={saving}>
-                Publish v{version.version_number}
+              <Button onClick={publishVersion} disabled={saving} size="sm">
+                Publish
               </Button>
             )}
             {version.status === "open" && (
               <>
                 <Link href={`/surveys/${survey.id}/share`}>
-                  <Button variant="secondary">Share</Button>
+                  <Button variant="secondary" size="sm">Share</Button>
                 </Link>
-                <Button variant="ghost" onClick={retireVersion}>
+                <Button variant="ghost" size="sm" onClick={retireVersion}>
                   Retire
                 </Button>
               </>
             )}
             {canCreateNewVersion && (
-              <Button variant="secondary" onClick={createNewVersion} disabled={saving}>
+              <Button variant="secondary" size="sm" onClick={createNewVersion} disabled={saving}>
                 New version →
               </Button>
             )}
             <Link href={`/surveys/${survey.id}/results`}>
-              <Button variant="secondary">Results</Button>
+              <Button variant="secondary" size="sm">Results</Button>
             </Link>
           </div>
         </div>

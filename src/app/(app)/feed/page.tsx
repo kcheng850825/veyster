@@ -61,7 +61,7 @@ export default async function FeedPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-display-sm text-ink-900 mb-1">Feed</h1>
+      <h1 className="text-display-sm font-semibold text-ink-900 mb-1">Feed</h1>
       <p className="text-sm text-ink-600 mb-6">
         Open surveys from the community. Tap to start swiping.
       </p>
@@ -83,7 +83,7 @@ export default async function FeedPage() {
                   className="block h-full card hover:shadow-pop hover:-translate-y-0.5 transition p-5"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-serif text-xl text-ink-900 leading-tight">
+                    <div className="text-lg font-semibold text-ink-900 leading-snug tracking-tight">
                       {s.title}
                     </div>
                     {v.version_number > 1 && (

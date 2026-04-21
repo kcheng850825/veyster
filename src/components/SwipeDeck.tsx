@@ -235,7 +235,7 @@ function PreviewCard({ question }: { question: Question }) {
         opacity: 0.65,
       }}
     >
-      <p className="font-serif text-2xl text-center text-ink-400">{question.text}</p>
+      <p className="text-xl sm:text-2xl text-center text-ink-400 font-medium tracking-tight leading-snug">{question.text}</p>
     </div>
   );
 }
@@ -285,7 +285,7 @@ function SwipeCard({
       >
         NO
       </motion.div>
-      <p className="font-serif text-[2rem] leading-tight text-center text-ink-900 relative">
+      <p className="text-2xl sm:text-3xl leading-tight text-center text-ink-900 font-medium tracking-tight relative">
         {question.text}
       </p>
     </motion.div>

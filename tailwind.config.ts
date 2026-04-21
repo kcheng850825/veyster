@@ -68,14 +68,13 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["var(--font-serif)", "ui-serif", "Georgia", "serif"],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       fontSize: {
-        // Display sizes tuned for the serif headline font.
-        "display-sm": ["2.5rem",   { lineHeight: "1.1",  letterSpacing: "-0.02em" }],
-        "display":    ["3.25rem",  { lineHeight: "1.05", letterSpacing: "-0.025em" }],
-        "display-lg": ["4.5rem",   { lineHeight: "1",    letterSpacing: "-0.03em" }],
+        // Display sizes tuned for Geist, very tight tracking.
+        "display-sm": ["clamp(2rem, 7vw, 2.75rem)", { lineHeight: "1.05", letterSpacing: "-0.03em" }],
+        "display":    ["clamp(2.5rem, 8vw, 3.5rem)", { lineHeight: "1",    letterSpacing: "-0.035em" }],
+        "display-lg": ["clamp(3rem, 10vw, 4.75rem)", { lineHeight: "0.95", letterSpacing: "-0.04em" }],
       },
       borderRadius: {
         xl:   "1rem",
