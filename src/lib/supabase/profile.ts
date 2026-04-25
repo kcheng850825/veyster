@@ -21,19 +21,31 @@ export async function loadOrCreateProfile(): Promise<{
 
   const userId = userData.user.id;
 
-  let { data: profile } = await supabase
+  const initial = await supabase
     .from("profiles")
     .select("*")
     .eq("id", userId)
     .maybeSingle();
+  let profile = initial.data;
 
   if (!profile) {
-    await supabase.from("profiles").insert({ id: userId });
+    const ins = await supabase.from("profiles").insert({ id: userId });
+    if (ins.error) {
+      throw new Error(
+        `Couldn't create profile (${ins.error.code ?? "unknown"}): ${ins.error.message}. ` +
+          `Make sure 0001_init.sql + 0002_rls.sql have been applied to your Supabase project.`,
+      );
+    }
     const refreshed = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
+    if (refreshed.error) {
+      throw new Error(
+        `Created profile but couldn't read it back (${refreshed.error.code ?? "unknown"}): ${refreshed.error.message}.`,
+      );
+    }
     profile = refreshed.data;
   }
 
@@ -43,8 +55,16 @@ export async function loadOrCreateProfile(): Promise<{
     );
   }
 
+  // The DB defaults race_codes / ethnicity_codes to '{}', but be defensive
+  // in case an older Supabase project has nullable columns.
+  const safe: Profile = {
+    ...(profile as Profile),
+    race_codes: (profile as Profile).race_codes ?? [],
+    ethnicity_codes: (profile as Profile).ethnicity_codes ?? [],
+  };
+
   return {
-    profile: profile as Profile,
+    profile: safe,
     userId,
     email: userData.user.email ?? null,
   };

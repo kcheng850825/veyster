@@ -155,7 +155,10 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
     );
   }
 
-  const previewQ = resolveNext(currentQuestion, "yes") ?? byPosition.get(currentQuestion.position + 1);
+  // Show the question that would come next on a "yes" answer as the preview
+  // card. resolveNext already honors branching + ends — if it returns null,
+  // there's no next card to preview (last question or end-on-yes).
+  const previewQ = resolveNext(currentQuestion, "yes");
   const answered = history.length;
   const total = questions.length;
 

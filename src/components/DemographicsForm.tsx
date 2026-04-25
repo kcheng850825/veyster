@@ -163,10 +163,6 @@ export function DemographicsForm({ profile, mode }: Props) {
     load();
   }, [countryCode, supabase]);
 
-  function toggle(list: string[], code: string) {
-    return list.includes(code) ? list.filter((c) => c !== code) : [...list, code];
-  }
-
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);

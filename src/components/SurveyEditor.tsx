@@ -26,15 +26,18 @@ export function SurveyEditor({
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const [survey, setSurvey] = useState(initialSurvey);
   const [version, setVersion] = useState(currentVersion);
+  const [versions, setVersions] = useState(allVersions);
   const [questions, setQuestions] = useState<Question[]>(
     [...initialQuestions].sort((a, b) => a.position - b.position),
   );
   const [saving, setSaving] = useState(false);
 
   const editable = version.status === "draft";
-  const latestVersion = allVersions[0];
+  const latestVersion = versions[0];
   const canCreateNewVersion =
-    latestVersion.status !== "draft" && version.id === latestVersion.id;
+    !!latestVersion &&
+    latestVersion.status !== "draft" &&
+    version.id === latestVersion.id;
 
   async function patchSurvey(patch: Partial<Survey>) {
     setSaving(true);
@@ -95,7 +98,10 @@ export function SurveyEditor({
     next[idx] = { ...b, position: a.position };
     next[swap] = { ...a, position: b.position };
     setQuestions(next);
-    await supabase.from("questions").update({ position: 99 }).eq("id", a.id);
+    // Use a position far above any user-facing limit so the temp value never
+    // collides with a real question's unique (version_id, position) constraint.
+    const TEMP_POS = 10_000;
+    await supabase.from("questions").update({ position: TEMP_POS }).eq("id", a.id);
     await supabase.from("questions").update({ position: a.position }).eq("id", b.id);
     await supabase.from("questions").update({ position: b.position }).eq("id", a.id);
   }
@@ -106,10 +112,11 @@ export function SurveyEditor({
       return;
     }
     setSaving(true);
+    const retiredAt = new Date().toISOString();
     // Retire any currently-open versions of this survey.
     const { error: retErr } = await supabase
       .from("survey_versions")
-      .update({ status: "retired", retired_at: new Date().toISOString() })
+      .update({ status: "retired", retired_at: retiredAt })
       .eq("survey_id", survey.id)
       .eq("status", "open");
     if (retErr) {
@@ -117,15 +124,24 @@ export function SurveyEditor({
       return alert(retErr.message);
     }
     // Open this version.
+    const openedAt = new Date().toISOString();
     const { data: opened, error } = await supabase
       .from("survey_versions")
-      .update({ status: "open", opened_at: new Date().toISOString() })
+      .update({ status: "open", opened_at: openedAt })
       .eq("id", version.id)
       .select("*")
-      .single();
+      .maybeSingle();
     setSaving(false);
     if (error) return alert(error.message);
-    if (opened) setVersion(opened as SurveyVersion);
+    if (!opened) return alert("Version not found — refresh and try again.");
+    setVersion(opened as SurveyVersion);
+    setVersions((vs) =>
+      vs.map((v) => {
+        if (v.id === opened.id) return opened as SurveyVersion;
+        if (v.status === "open") return { ...v, status: "retired", retired_at: retiredAt };
+        return v;
+      }),
+    );
     router.refresh();
   }
 
@@ -137,16 +153,18 @@ export function SurveyEditor({
       .update({ status: "retired", retired_at: new Date().toISOString() })
       .eq("id", version.id)
       .select("*")
-      .single();
+      .maybeSingle();
     setSaving(false);
     if (error) return alert(error.message);
-    if (data) setVersion(data as SurveyVersion);
+    if (!data) return alert("Version not found — refresh and try again.");
+    setVersion(data as SurveyVersion);
+    setVersions((vs) => vs.map((v) => (v.id === data.id ? (data as SurveyVersion) : v)));
     router.refresh();
   }
 
   async function createNewVersion() {
     setSaving(true);
-    const nextNumber = Math.max(...allVersions.map((x) => x.version_number)) + 1;
+    const nextNumber = Math.max(...versions.map((x) => x.version_number)) + 1;
     const { data: newVersion, error } = await supabase
       .from("survey_versions")
       .insert({
@@ -202,18 +220,41 @@ export function SurveyEditor({
         if (newId) idMap.set(q.id, newId);
       });
 
-      // Second pass: rewrite branch targets.
+      // Second pass: rewrite branch targets, tracking any that couldn't be
+      // mapped (target question doesn't exist in source). We fall back to
+      // "next position" behaviour by leaving the field null, but warn the
+      // user so they can fix it before publishing.
+      const broken: string[] = [];
       for (const q of sourceQs) {
         const newId = idMap.get(q.id);
         if (!newId) continue;
         const patch: { next_on_yes?: string | null; next_on_no?: string | null } = {};
-        if (q.next_on_yes) patch.next_on_yes = idMap.get(q.next_on_yes) ?? null;
-        if (q.next_on_no)  patch.next_on_no  = idMap.get(q.next_on_no)  ?? null;
+        if (q.next_on_yes) {
+          const remapped = idMap.get(q.next_on_yes);
+          if (remapped) patch.next_on_yes = remapped;
+          else broken.push(`Q${q.position} → Yes target was missing`);
+        }
+        if (q.next_on_no) {
+          const remapped = idMap.get(q.next_on_no);
+          if (remapped) patch.next_on_no = remapped;
+          else broken.push(`Q${q.position} → No target was missing`);
+        }
         if (patch.next_on_yes || patch.next_on_no) {
           await supabase.from("questions").update(patch).eq("id", newId);
         }
       }
+      if (broken.length > 0) {
+        alert(
+          "Some branch targets could not be carried over and were reset to default ('next question'):\n\n" +
+            broken.join("\n") +
+            "\n\nReview them before publishing v" + nextNumber + ".",
+        );
+      }
     }
+
+    // Append the new version locally so the picker / latest-version logic
+    // updates immediately, before router.refresh() resolves.
+    setVersions((vs) => [newVersion as SurveyVersion, ...vs]);
 
     setSaving(false);
     router.replace(`/surveys/${survey.id}?v=${newVersion!.id}`);
@@ -249,13 +290,13 @@ export function SurveyEditor({
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {allVersions.length > 1 && (
+            {versions.length > 1 && (
               <Select
                 value={version.id}
                 onChange={(e) => switchVersion(e.target.value)}
                 className="!py-1.5 !w-auto"
               >
-                {allVersions.map((v) => (
+                {versions.map((v) => (
                   <option key={v.id} value={v.id}>
                     v{v.version_number} · {v.status}
                   </option>

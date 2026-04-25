@@ -47,7 +47,8 @@ export default async function RespondPage({
   const { data: answers } = await supabase
     .from("answers")
     .select("question_id, answer")
-    .eq("session_id", session.id);
+    .eq("session_id", session.id)
+    .order("swiped_at", { ascending: true });
 
   return (
     <SwipeDeck

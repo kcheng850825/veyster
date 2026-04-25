@@ -33,7 +33,12 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
   const [lookups, setLookups] = useState<Lookups>({});
 
   const needsAll = verificationFields.length > 0;
-  const allConfirmed = verificationFields.every((f) => confirmed[f]);
+  // A field is "ready" if it has a real value AND the user has confirmed it.
+  // A "Loading…" placeholder doesn't count as ready.
+  const allReady = verificationFields.every((f) => {
+    const v = displayValue(f, profile, lookups);
+    return !!v && v !== "Loading…" && confirmed[f] === true;
+  });
 
   // Resolve readable labels for country, admin1, city, and ethnicity/race codes.
   useEffect(() => {
@@ -181,7 +186,7 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
 
       <Button
         onClick={start}
-        disabled={loading || (needsAll && !allConfirmed)}
+        disabled={loading || (needsAll && !allReady)}
         className="w-full"
       >
         {loading ? "Starting…" : "Start survey"}
