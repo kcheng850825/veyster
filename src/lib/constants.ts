@@ -28,3 +28,7 @@ export const VERIFICATION_FIELDS = [
 
 export const MIN_RESPONDENT_AGE = 18;
 export const MAX_QUESTIONS_PER_SURVEY = 10;
+
+// Placeholder id for `.in()` filters when the candidate list is empty.
+// PostgREST rejects an empty `in.()`, so we pass a UUID that never matches.
+export const SENTINEL_UUID = "00000000-0000-0000-0000-000000000000";

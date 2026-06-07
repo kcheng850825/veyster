@@ -137,25 +137,25 @@ export function ResultsView({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <div className="text-xs uppercase tracking-wide text-gray-500">Results</div>
+          <div className="text-xs uppercase tracking-wide text-ink-500">Results</div>
           <h1 className="text-2xl font-bold">{surveyTitle}</h1>
         </div>
         <Link
           href={`/surveys/${surveyId}`}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="text-sm text-ink-500 hover:text-ink-700"
         >
           ← Back to survey
         </Link>
       </div>
 
       {versions.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
+        <div className="rounded-xl border border-dashed border-ink-300 p-6 text-center text-ink-500">
           No versions yet.
         </div>
       )}
 
       {versions.length > 0 && (
-        <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-1 border-b border-ink-200 overflow-x-auto">
           {tabs.map((t) => (
             <button
               key={t.key}
@@ -164,11 +164,11 @@ export function ResultsView({
                 "px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap " +
                 (activeTab === t.key
                   ? "border-brand-500 text-brand-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700")
+                  : "border-transparent text-ink-500 hover:text-ink-700")
               }
             >
               {t.label}
-              <span className="ml-2 text-xs text-gray-400">{t.count}</span>
+              <span className="ml-2 text-xs text-ink-400">{t.count}</span>
             </button>
           ))}
         </div>
@@ -197,8 +197,8 @@ export function ResultsView({
         />
       )}
 
-      <section className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-600">
-        <div className="font-medium text-gray-800">CSV export</div>
+      <section className="rounded-2xl border border-dashed border-ink-300 p-4 text-sm text-ink-600">
+        <div className="font-medium text-ink-800">CSV export</div>
         <p>Row-level CSV export with demographics is available on the paid tier (coming soon).</p>
       </section>
     </div>
@@ -259,10 +259,10 @@ function VersionView({
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-semibold">v{version.version_number} per question</h2>
-          <span className="text-xs text-gray-500">{version.status}</span>
+          <span className="text-xs text-ink-500">{version.status}</span>
         </div>
         {questions.length === 0 ? (
-          <p className="text-sm text-gray-500">No questions in this version.</p>
+          <p className="text-sm text-ink-500">No questions in this version.</p>
         ) : (
           <ul className="space-y-3">
             {questions.map((q) => {
@@ -271,14 +271,14 @@ function VersionView({
               const no = rows.filter((r) => r.answer === "no").length;
               const linked = linkedElsewhere(q);
               return (
-                <li key={q.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                <li key={q.id} className="rounded-xl border border-ink-200 bg-white p-4">
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
-                      <div className="text-xs text-gray-500 mb-1">Q{q.position}</div>
+                      <div className="text-xs text-ink-500 mb-1">Q{q.position}</div>
                       <div className="font-medium">{q.text}</div>
                       {linked.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1 text-xs">
-                          <span className="text-gray-500">Linked:</span>
+                          <span className="text-ink-500">Linked:</span>
                           {linked.map((l) => (
                             <span
                               key={l.q.id}
@@ -289,7 +289,7 @@ function VersionView({
                           ))}
                           <button
                             onClick={() => unlinkQuestion(q.id)}
-                            className="text-gray-400 hover:text-gray-600 ml-1"
+                            className="text-ink-400 hover:text-ink-600 ml-1"
                             title="Unlink this question from the group"
                           >
                             ✕
@@ -318,7 +318,7 @@ function VersionView({
                   )}
                   <div className="mt-3">
                     {yes + no === 0 ? (
-                      <div className="text-sm text-gray-500">No answers yet</div>
+                      <div className="text-sm text-ink-500">No answers yet</div>
                     ) : (
                       <YesNoBar yes={yes} no={no} />
                     )}
@@ -351,8 +351,8 @@ function LinkPicker({
   onPick: (qid: string) => void;
 }) {
   return (
-    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-      <div className="text-xs text-gray-500">
+    <div className="mt-3 rounded-lg border border-ink-200 bg-ink-50 p-3 space-y-2">
+      <div className="text-xs text-ink-500">
         Mark one of these as equivalent to &quot;{sourceQ.text.slice(0, 60)}&quot;:
       </div>
       {otherVersions.map((v) => {
@@ -362,7 +362,7 @@ function LinkPicker({
         if (qs.length === 0) return null;
         return (
           <div key={v.id}>
-            <div className="text-xs font-medium text-gray-600 mb-1">
+            <div className="text-xs font-medium text-ink-600 mb-1">
               v{v.version_number}
             </div>
             <ul className="space-y-1">
@@ -370,9 +370,9 @@ function LinkPicker({
                 <li key={q.id}>
                   <button
                     onClick={() => onPick(q.id)}
-                    className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-white border border-transparent hover:border-gray-200"
+                    className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-white border border-transparent hover:border-ink-200"
                   >
-                    <span className="text-gray-400 mr-2">Q{q.position}</span>
+                    <span className="text-ink-400 mr-2">Q{q.position}</span>
                     {q.text}
                   </button>
                 </li>
@@ -446,27 +446,27 @@ function CombinedView({
 
       <section>
         <h2 className="font-semibold mb-3">Combined across versions</h2>
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-ink-500 mb-3">
           Questions are merged by the &quot;link&quot; groups you set up on each version tab.
           Unlinked questions stay in their own row.
         </p>
         {groups.length === 0 ? (
-          <p className="text-sm text-gray-500">No questions yet.</p>
+          <p className="text-sm text-ink-500">No questions yet.</p>
         ) : (
           <ul className="space-y-3">
             {groups.map((g) => (
-              <li key={g.groupId} className="rounded-xl border border-gray-200 bg-white p-4">
+              <li key={g.groupId} className="rounded-xl border border-ink-200 bg-white p-4">
                 <div className="font-medium">{g.representativeText}</div>
-                <div className="mt-1 flex flex-wrap gap-1 text-xs text-gray-500">
+                <div className="mt-1 flex flex-wrap gap-1 text-xs text-ink-500">
                   {g.versions.map((v, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded-full bg-gray-100">
+                    <span key={i} className="px-2 py-0.5 rounded-full bg-ink-100">
                       v{v.version_number} · Q{v.position}
                     </span>
                   ))}
                 </div>
                 <div className="mt-3">
                   {g.yes + g.no === 0 ? (
-                    <div className="text-sm text-gray-500">No answers yet</div>
+                    <div className="text-sm text-ink-500">No answers yet</div>
                   ) : (
                     <YesNoBar yes={g.yes} no={g.no} />
                   )}
@@ -574,9 +574,9 @@ function BreakdownTable({
   return (
     <section>
       <h2 className="font-semibold mb-3">{title}</h2>
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-xs text-gray-500">
+          <thead className="bg-ink-50 text-xs text-ink-500">
             <tr>
               <th className="text-left p-3">Group</th>
               <th className="text-right p-3">N</th>
@@ -587,9 +587,9 @@ function BreakdownTable({
           </thead>
           <tbody>
             {groups.map((g) => (
-              <tr key={g.key} className="border-t border-gray-100">
+              <tr key={g.key} className="border-t border-ink-100">
                 <td className="p-3">{g.label}</td>
-                <td className="p-3 text-right text-gray-500">{g.n}</td>
+                <td className="p-3 text-right text-ink-500">{g.n}</td>
                 {questions.map((q) => {
                   const cell = g.perQ.find((p) => p.qid === q.id);
                   return (
@@ -603,7 +603,7 @@ function BreakdownTable({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-500 mt-1">Cells show % Yes per group.</p>
+      <p className="text-xs text-ink-500 mt-1">Cells show % Yes per group.</p>
     </section>
   );
 }
@@ -612,8 +612,8 @@ function BreakdownTable({
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <div className="text-xs text-gray-500">{label}</div>
+    <div className="rounded-2xl border border-ink-200 bg-white p-4">
+      <div className="text-xs text-ink-500">{label}</div>
       <div className="text-2xl font-bold mt-1">{value}</div>
     </div>
   );
@@ -624,11 +624,11 @@ function YesNoBar({ yes, no }: { yes: number; no: number }) {
   const yesPct = total ? (100 * yes) / total : 0;
   return (
     <div>
-      <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
+      <div className="flex h-3 rounded-full overflow-hidden bg-ink-100">
         <div className="bg-yes" style={{ width: `${yesPct}%` }} />
         <div className="bg-no" style={{ width: `${100 - yesPct}%` }} />
       </div>
-      <div className="flex justify-between text-xs mt-1 text-gray-600">
+      <div className="flex justify-between text-xs mt-1 text-ink-600">
         <span>Yes · {yes} ({Math.round(yesPct)}%)</span>
         <span>No · {no} ({Math.round(100 - yesPct)}%)</span>
       </div>

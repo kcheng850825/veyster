@@ -1,5 +1,7 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 
 export async function getServerSupabase() {
   const cookieStore = await cookies();
@@ -24,9 +26,21 @@ export async function getServerSupabase() {
   );
 }
 
-export async function requireUser() {
+/**
+ * Returns the authenticated user (or null), deduplicated across a single
+ * render pass. The layout and each page both need the user; without this,
+ * every authenticated route makes 2+ round-trips to the Supabase auth
+ * server. React's cache() collapses them into one per request.
+ */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const supabase = await getServerSupabase();
   const { data } = await supabase.auth.getUser();
-  if (!data.user) throw new Error("UNAUTHENTICATED");
-  return { user: data.user, supabase };
+  return data.user ?? null;
+});
+
+export async function requireUser() {
+  const supabase = await getServerSupabase();
+  const user = await getCurrentUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+  return { user, supabase };
 }

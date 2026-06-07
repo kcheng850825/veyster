@@ -10,7 +10,7 @@ export default async function Onboarding() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Tell us about you</h1>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-ink-500 mb-6">
         This info is used so researchers can match you to relevant surveys. You
         can change it anytime in your profile.
       </p>

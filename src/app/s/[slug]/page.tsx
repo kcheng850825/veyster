@@ -44,7 +44,7 @@ export default async function SurveyIntroPage({
       <main className="min-h-screen flex items-center justify-center px-6 text-center">
         <div>
           <h1 className="text-xl font-bold">{survey.title}</h1>
-          <p className="text-gray-500 mt-2">This survey is not accepting responses right now.</p>
+          <p className="text-ink-500 mt-2">This survey is not accepting responses right now.</p>
           <Link href="/feed" className="mt-6 inline-block text-brand-600 hover:underline">
             Browse other surveys
           </Link>
@@ -72,7 +72,7 @@ export default async function SurveyIntroPage({
       <main className="min-h-screen flex items-center justify-center px-6 text-center">
         <div>
           <h1 className="text-xl font-bold">Already answered</h1>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ink-500 mt-2">
             You've completed v{activeVersion.version_number} of this survey. Thanks.
           </p>
           <Link href="/feed" className="mt-6 inline-block text-brand-600 hover:underline">
@@ -89,15 +89,15 @@ export default async function SurveyIntroPage({
 
   return (
     <main className="min-h-screen px-6 py-8 max-w-lg mx-auto">
-      <div className="text-xs uppercase tracking-wide text-gray-500">
+      <div className="text-xs uppercase tracking-wide text-ink-500">
         Survey · v{activeVersion.version_number}
       </div>
       <h1 className="text-2xl font-bold">{survey.title}</h1>
       {survey.description && (
-        <p className="mt-2 text-gray-600 whitespace-pre-line">{survey.description}</p>
+        <p className="mt-2 text-ink-600 whitespace-pre-line">{survey.description}</p>
       )}
 
-      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
+      <div className="mt-6 rounded-2xl border border-ink-200 bg-white p-4 space-y-3 text-sm">
         <Row
           label="Questions"
           value={`${questionCount} yes/no question${questionCount === 1 ? "" : "s"}`}
@@ -130,7 +130,7 @@ export default async function SurveyIntroPage({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
-      <span className="text-gray-500">{label}</span>
+      <span className="text-ink-500">{label}</span>
       <span className="text-right">{value}</span>
     </div>
   );

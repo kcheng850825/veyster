@@ -91,18 +91,18 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
     setBusy(true);
     const q = currentQuestion;
 
-    // Fling the card off in the direction of the answer, so the user sees
-    // their answer register before the next card replaces it.
+    // Save and animate concurrently: the answer is already known, so the
+    // ~280ms fly-off masks the network round-trip instead of stacking on
+    // top of it.
     const flyTo = a === "yes" ? 600 : -600;
-    await animate(x, flyTo, {
-      duration: 0.28,
-      ease: [0.32, 0.72, 0, 1],
-    });
-
-    const { error } = await supabase.from("answers").upsert(
+    const save = supabase.from("answers").upsert(
       { session_id: sessionId, question_id: q.id, answer: a },
       { onConflict: "session_id,question_id" },
     );
+    const [{ error }] = await Promise.all([
+      save,
+      animate(x, flyTo, { duration: 0.28, ease: [0.32, 0.72, 0, 1] }),
+    ]);
     if (error) {
       alert(error.message);
       x.set(0);
@@ -150,7 +150,7 @@ export function SwipeDeck({ slug, sessionId, questions, initialAnswers }: Props)
   if (done || !currentQuestion) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Wrapping up…</div>
+        <div className="text-ink-500">Wrapping up…</div>
       </div>
     );
   }

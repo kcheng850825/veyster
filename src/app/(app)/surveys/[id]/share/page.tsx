@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getServerSupabase, getCurrentUser } from "@/lib/supabase/server";
 import { getBaseUrl } from "@/lib/base-url";
 import { CopyButton } from "@/components/CopyButton";
 
@@ -12,14 +12,14 @@ export default async function SharePage({
 }) {
   const { id } = await params;
   const supabase = await getServerSupabase();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
   const { data: survey } = await supabase
     .from("surveys")
     .select("id, title, share_slug, owner_id")
     .eq("id", id)
-    .eq("owner_id", userData.user.id)
+    .eq("owner_id", user.id)
     .maybeSingle();
 
   if (!survey) notFound();

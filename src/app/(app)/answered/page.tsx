@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getServerSupabase, getCurrentUser } from "@/lib/supabase/server";
 
 type Row = {
   id: string;
@@ -19,8 +19,8 @@ type Row = {
 
 export default async function AnsweredPage() {
   const supabase = await getServerSupabase();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
   const { data: rows } = await supabase
     .from("survey_sessions")
@@ -31,7 +31,7 @@ export default async function AnsweredPage() {
         surveys!inner ( id, title, share_slug )
       )
     `)
-    .eq("respondent_id", userData.user.id)
+    .eq("respondent_id", user.id)
     .order("started_at", { ascending: false })
     .returns<Row[]>();
 
@@ -40,12 +40,12 @@ export default async function AnsweredPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Answered</h1>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-ink-500 mb-6">
         Surveys you&apos;ve started or completed.
       </p>
 
       {sessions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-500">
+        <div className="rounded-2xl border border-dashed border-ink-300 p-10 text-center text-ink-500">
           You haven&apos;t answered any surveys yet.
           <div className="mt-3">
             <Link href="/feed" className="text-brand-600 hover:underline">
@@ -64,12 +64,12 @@ export default async function AnsweredPage() {
               <li key={row.id}>
                 <Link
                   href={`/s/${survey.share_slug}`}
-                  className="block rounded-2xl border border-gray-200 bg-white p-4 hover:border-brand-300 hover:shadow-sm"
+                  className="block rounded-2xl border border-ink-200 bg-white p-4 hover:border-brand-300 hover:shadow-sm"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-medium">{survey.title}</div>
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      <span className="px-2 py-0.5 rounded-full bg-ink-100 text-ink-600">
                         v{sv.version_number}
                       </span>
                       <span
@@ -84,7 +84,7 @@ export default async function AnsweredPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-xs text-ink-500 mt-1">
                     {completed
                       ? `Completed ${new Date(row.completed_at!).toLocaleDateString()}`
                       : `Started ${new Date(row.started_at).toLocaleDateString()} — tap to continue`}

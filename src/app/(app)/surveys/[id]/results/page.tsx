@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getServerSupabase, getCurrentUser } from "@/lib/supabase/server";
+import { SENTINEL_UUID } from "@/lib/constants";
 import { ResultsView } from "@/components/ResultsView";
 import type { Answer, Question, SurveyVersion } from "@/lib/types";
 
@@ -10,44 +11,50 @@ export default async function ResultsPage({
 }) {
   const { id } = await params;
   const supabase = await getServerSupabase();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  const { data: survey } = await supabase
-    .from("surveys")
-    .select("id, title, owner_id, is_paid_tier, payout_mode")
-    .eq("id", id)
-    .eq("owner_id", userData.user.id)
-    .maybeSingle();
+  // Survey + versions can be fetched in parallel; nothing else depends on
+  // questions/sessions/answers before we know the version ids.
+  const [{ data: survey }, { data: versions }] = await Promise.all([
+    supabase
+      .from("surveys")
+      .select("id, title, owner_id, is_paid_tier, payout_mode")
+      .eq("id", id)
+      .eq("owner_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("survey_versions")
+      .select("*")
+      .eq("survey_id", id)
+      .order("version_number", { ascending: true })
+      .returns<SurveyVersion[]>(),
+  ]);
   if (!survey) notFound();
 
-  const { data: versions } = await supabase
-    .from("survey_versions")
-    .select("*")
-    .eq("survey_id", id)
-    .order("version_number", { ascending: true })
-    .returns<SurveyVersion[]>();
-
   const versionIds = (versions ?? []).map((v) => v.id);
+  const idsForIn = versionIds.length ? versionIds : [SENTINEL_UUID];
 
-  const { data: questions } = await supabase
-    .from("questions")
-    .select("*")
-    .in("version_id", versionIds.length ? versionIds : ["00000000-0000-0000-0000-000000000000"])
-    .order("position")
-    .returns<Question[]>();
-
-  const { data: sessions } = await supabase
-    .from("survey_sessions")
-    .select("id, version_id, profile_snapshot, completed_at")
-    .in("version_id", versionIds.length ? versionIds : ["00000000-0000-0000-0000-000000000000"]);
+  // Questions + sessions both keyed on version_id and don't depend on each
+  // other — fire in parallel.
+  const [{ data: questions }, { data: sessions }] = await Promise.all([
+    supabase
+      .from("questions")
+      .select("*")
+      .in("version_id", idsForIn)
+      .order("position")
+      .returns<Question[]>(),
+    supabase
+      .from("survey_sessions")
+      .select("id, version_id, profile_snapshot, completed_at")
+      .in("version_id", idsForIn),
+  ]);
 
   const sessionIds = (sessions ?? []).map((s) => s.id);
-
   const { data: answers } = await supabase
     .from("answers")
     .select("session_id, question_id, answer")
-    .in("session_id", sessionIds.length ? sessionIds : ["00000000-0000-0000-0000-000000000000"])
+    .in("session_id", sessionIds.length ? sessionIds : [SENTINEL_UUID])
     .returns<({ session_id: string; question_id: string; answer: Answer })[]>();
 
   return (

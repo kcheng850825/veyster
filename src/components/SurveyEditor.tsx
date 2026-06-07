@@ -359,7 +359,7 @@ export function SurveyEditor({
         </fieldset>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
+      <section className="rounded-2xl border border-ink-200 bg-white p-4 space-y-4">
         <h2 className="font-semibold">
           Questions in v{version.version_number} ({questions.length} / {MAX_QUESTIONS_PER_SURVEY})
         </h2>
@@ -370,26 +370,26 @@ export function SurveyEditor({
               .filter((o) => o.position > q.position)
               .map((o) => ({ id: o.id, position: o.position, text: o.text }));
             return (
-              <li key={q.id} className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+              <li key={q.id} className="rounded-xl border border-ink-200 p-3 bg-ink-50">
                 <div className="flex items-start gap-2">
                   <div className="flex flex-col gap-1">
                     <button
                       type="button"
                       onClick={() => move(q.id, -1)}
                       disabled={!editable || i === 0}
-                      className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                      className="text-ink-400 hover:text-ink-600 disabled:opacity-30"
                       aria-label="Move up"
                     >
                       ▲
                     </button>
-                    <span className="text-xs font-mono text-gray-500 text-center">
+                    <span className="text-xs font-mono text-ink-500 text-center">
                       Q{q.position}
                     </span>
                     <button
                       type="button"
                       onClick={() => move(q.id, 1)}
                       disabled={!editable || i === questions.length - 1}
-                      className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                      className="text-ink-400 hover:text-ink-600 disabled:opacity-30"
                       aria-label="Move down"
                     >
                       ▼
@@ -458,11 +458,11 @@ export function SurveyEditor({
         )}
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
+      <section className="rounded-2xl border border-ink-200 bg-white p-4 space-y-4">
         <h2 className="font-semibold">Payout mode</h2>
-        <p className="text-xs text-gray-500">Applies to all versions.</p>
+        <p className="text-xs text-ink-500">Applies to all versions.</p>
         <fieldset className="space-y-2">
-          <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-ink-200 cursor-pointer hover:bg-ink-50">
             <input
               type="radio"
               name="payout"
@@ -472,12 +472,12 @@ export function SurveyEditor({
             />
             <div>
               <div className="font-medium">Pay per question answered</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-ink-500">
                 Respondents are paid for each question they swipe. Partial completion allowed.
               </div>
             </div>
           </label>
-          <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-ink-200 cursor-pointer hover:bg-ink-50">
             <input
               type="radio"
               name="payout"
@@ -501,7 +501,7 @@ export function SurveyEditor({
                 />
                 % premium per question)
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-ink-500">
                 Respondents must answer all required questions to be paid. Premium makes it more lucrative.
               </div>
             </div>
@@ -509,9 +509,9 @@ export function SurveyEditor({
         </fieldset>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+      <section className="rounded-2xl border border-ink-200 bg-white p-4 space-y-3">
         <h2 className="font-semibold">Pre-survey verification</h2>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-500">
           Respondents will be asked to confirm these profile fields are still accurate before starting. Applies to all versions.
         </p>
         <fieldset className="flex flex-wrap gap-2">
@@ -526,7 +526,7 @@ export function SurveyEditor({
                   "px-3 py-1.5 rounded-full text-sm border " +
                   (on
                     ? "bg-brand-50 border-brand-500 text-brand-700"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50")
+                    : "border-ink-300 bg-white text-ink-700 hover:bg-ink-50")
                 }
               >
                 {f.label}
@@ -537,7 +537,7 @@ export function SurveyEditor({
       </section>
 
       {!editable && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-500">
           v{version.version_number} is {version.status}; its questions are frozen.
           {canCreateNewVersion && " To change questions, create a new version."}
         </p>
@@ -548,7 +548,7 @@ export function SurveyEditor({
 
 function StatusBadge({ status }: { status: SurveyVersion["status"] }) {
   const styles = {
-    draft:   "bg-gray-100 text-gray-600",
+    draft:   "bg-ink-100 text-ink-600",
     open:    "bg-emerald-50 text-emerald-700",
     retired: "bg-amber-50 text-amber-700",
   } as const;
@@ -574,7 +574,7 @@ function BranchControl({
 }) {
   return (
     <label className="text-sm">
-      <span className="block mb-1 text-gray-600">{label}</span>
+      <span className="block mb-1 text-ink-600">{label}</span>
       <Select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
         <option value="__next">Next question</option>
         <option value="__end">End survey</option>

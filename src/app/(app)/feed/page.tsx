@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getServerSupabase, getCurrentUser } from "@/lib/supabase/server";
 
 type VersionRow = {
   id: string;
@@ -17,30 +17,31 @@ type VersionRow = {
 
 export default async function FeedPage() {
   const supabase = await getServerSupabase();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  // Every currently-open version whose parent survey is publicly listed and
-  // not owned by the current user.
-  const { data: openVersions } = await supabase
-    .from("survey_versions")
-    .select(`
-      id, version_number, survey_id,
-      surveys!inner ( id, title, description, share_slug, owner_id, visibility )
-    `)
-    .eq("status", "open")
-    .eq("surveys.visibility", "public")
-    .neq("surveys.owner_id", userData.user.id)
-    .order("opened_at", { ascending: false })
-    .limit(50)
-    .returns<VersionRow[]>();
+  // Open public versions not owned by this user, plus the versions this user
+  // already completed — fetched in parallel since neither depends on the other.
+  const [{ data: openVersions }, { data: completedSessions }] = await Promise.all([
+    supabase
+      .from("survey_versions")
+      .select(`
+        id, version_number, survey_id,
+        surveys!inner ( id, title, description, share_slug, owner_id, visibility )
+      `)
+      .eq("status", "open")
+      .eq("surveys.visibility", "public")
+      .neq("surveys.owner_id", user.id)
+      .order("opened_at", { ascending: false })
+      .limit(50)
+      .returns<VersionRow[]>(),
+    supabase
+      .from("survey_sessions")
+      .select("version_id")
+      .eq("respondent_id", user.id)
+      .not("completed_at", "is", null),
+  ]);
 
-  // Hide versions the current user has already completed.
-  const { data: completedSessions } = await supabase
-    .from("survey_sessions")
-    .select("version_id")
-    .eq("respondent_id", userData.user.id)
-    .not("completed_at", "is", null);
   const completedVersionIds = new Set(
     (completedSessions ?? []).map((s) => s.version_id),
   );

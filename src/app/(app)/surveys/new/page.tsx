@@ -5,8 +5,7 @@ import { Field, Input, Textarea } from "@/components/ui/Input";
 
 async function createSurvey(formData: FormData) {
   "use server";
-  const supabase = (await import("@/lib/supabase/server")).getServerSupabase;
-  const sb = await supabase();
+  const sb = await getServerSupabase();
   const { data: userData } = await sb.auth.getUser();
   if (!userData.user) redirect("/login");
 
@@ -33,7 +32,7 @@ async function createSurvey(formData: FormData) {
 export default function NewSurveyPage() {
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold mb-6">New survey</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 mb-6">New survey</h1>
       <form action={createSurvey} className="space-y-4">
         <Field label="Title">
           <Input name="title" required maxLength={140} placeholder="e.g. Remote work preferences" />

@@ -274,16 +274,16 @@ export function DemographicsForm({ profile, mode }: Props) {
               autoComplete="off"
             />
             {!city && cityQuery.length >= 2 && (
-              <div className="absolute z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-10 mt-1 w-full rounded-xl border border-ink-200 bg-white shadow-lg max-h-60 overflow-auto">
                 {citySearchLoading ? (
-                  <div className="px-3 py-2 text-sm text-gray-400">Searching…</div>
+                  <div className="px-3 py-2 text-sm text-ink-400">Searching…</div>
                 ) : cityResults.length > 0 ? (
                   <ul>
                     {cityResults.map((c) => (
                       <li key={c.geonameid}>
                         <button
                           type="button"
-                          className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                          className="w-full text-left px-3 py-2 hover:bg-ink-50"
                           onClick={() => {
                             setCity(c);
                             setCityQuery(c.name);
@@ -296,7 +296,7 @@ export function DemographicsForm({ profile, mode }: Props) {
                     ))}
                   </ul>
                 ) : citySearchRan ? (
-                  <div className="px-3 py-2 text-xs text-gray-500 space-y-1">
+                  <div className="px-3 py-2 text-xs text-ink-500 space-y-1">
                     <div>No matches for &quot;{cityQuery}&quot; in the selected country.</div>
                     <div>
                       Only the top ~80 US cities ship with the app by default. If yours

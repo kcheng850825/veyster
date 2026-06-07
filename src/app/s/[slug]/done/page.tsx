@@ -7,7 +7,7 @@ export default function DonePage() {
       <div className="text-center max-w-sm">
         <div className="text-5xl mb-4">✓</div>
         <h1 className="text-2xl font-bold">Thanks for answering.</h1>
-        <p className="mt-2 text-gray-500">
+        <p className="mt-2 text-ink-500">
           Your responses are in. The researcher only sees anonymized aggregates.
         </p>
         <Link

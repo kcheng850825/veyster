@@ -137,9 +137,9 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
   return (
     <div className="mt-6 space-y-4">
       {needsAll && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-ink-200 bg-white p-4">
           <div className="font-medium">Confirm your info</div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-ink-500 mt-1">
             The researcher needs these fields to be current. Confirm each, or update your
             profile first.
           </p>
@@ -161,7 +161,7 @@ export function StartSurveyForm({ slug, surveyId, versionId, profile, verificati
                   />
                   <label htmlFor={`v-${f}`} className="text-sm flex-1">
                     <div className="font-medium">{label}</div>
-                    <div className="text-gray-500">
+                    <div className="text-ink-500">
                       {display || (
                         <span className="text-amber-600">
                           Not set — update your profile.
