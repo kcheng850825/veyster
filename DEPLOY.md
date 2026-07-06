@@ -44,6 +44,7 @@ Run these in order:
 | 4 | `supabase/migrations/0004_minimal_geo_seed.sql` | ~55 countries, US states, top 80 US cities |
 | 5 | `supabase/migrations/0005_versioning.sql` | Survey versioning + cross-version question linking |
 | 6 | `supabase/migrations/0006_open_access.sql` | Friends & family (no-login) surveys + contact fields |
+| 7 | `supabase/migrations/0007_fix_rls_recursion.sql` | **Required if you ran 0006** — fixes an RLS recursion that hid all surveys |
 
 > **Don't want to deal with the CLI for full GeoNames?** You're done after
 > step 4 — you have enough country/state/city data for US-focused testing.
