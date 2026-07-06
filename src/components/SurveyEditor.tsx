@@ -4,8 +4,19 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import type { Question, Survey, SurveyVersion, VerificationField } from "@/lib/types";
-import { VERIFICATION_FIELDS, MAX_QUESTIONS_PER_SURVEY } from "@/lib/constants";
+import type {
+  ContactFieldConfig,
+  ContactFieldKey,
+  Question,
+  Survey,
+  SurveyVersion,
+  VerificationField,
+} from "@/lib/types";
+import {
+  VERIFICATION_FIELDS,
+  CONTACT_FIELDS,
+  MAX_QUESTIONS_PER_SURVEY,
+} from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 
@@ -269,6 +280,28 @@ export function SurveyEditor({
     patchSurvey({ verification_fields: next });
   }
 
+  function setAccessMode(mode: Survey["access_mode"]) {
+    // Friends & family surveys are link-only by nature.
+    patchSurvey(
+      mode === "open"
+        ? { access_mode: mode, visibility: "link_only" }
+        : { access_mode: mode },
+    );
+  }
+
+  function updateContactField(
+    key: ContactFieldKey,
+    patch: Partial<ContactFieldConfig>,
+  ) {
+    const current = survey.contact_fields?.[key] ?? { show: false, required: false };
+    const nextField = { ...current, ...patch };
+    // A hidden field can't be required.
+    if (nextField.show === false) nextField.required = false;
+    patchSurvey({
+      contact_fields: { ...survey.contact_fields, [key]: nextField },
+    });
+  }
+
   function switchVersion(id: string) {
     router.replace(`/surveys/${survey.id}?v=${id}`);
     router.refresh();
@@ -345,18 +378,113 @@ export function SurveyEditor({
               maxLength={600}
             />
           </Field>
-          <Field label="Visibility">
-            <Select
-              value={survey.visibility}
-              onChange={(e) =>
-                patchSurvey({ visibility: e.target.value as Survey["visibility"] })
-              }
-            >
-              <option value="link_only">Link-only (share a URL or QR)</option>
-              <option value="public">Public (listed in the feed)</option>
-            </Select>
-          </Field>
+          {survey.access_mode !== "open" && (
+            <Field label="Visibility">
+              <Select
+                value={survey.visibility}
+                onChange={(e) =>
+                  patchSurvey({ visibility: e.target.value as Survey["visibility"] })
+                }
+              >
+                <option value="link_only">Link-only (share a URL or QR)</option>
+                <option value="public">Public (listed in the feed)</option>
+              </Select>
+            </Field>
+          )}
         </fieldset>
+      </section>
+
+      <section className="rounded-2xl border border-ink-200 bg-white p-4 space-y-4">
+        <h2 className="font-semibold">Who can respond</h2>
+        <fieldset className="space-y-2">
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-ink-200 cursor-pointer hover:bg-ink-50">
+            <input
+              type="radio"
+              name="access_mode"
+              checked={survey.access_mode !== "open"}
+              onChange={() => setAccessMode("authenticated")}
+              className="mt-1"
+            />
+            <div>
+              <div className="font-medium">Network (account required)</div>
+              <div className="text-xs text-ink-500">
+                Respondents sign in, so you get verified demographics and can
+                pay them. Can be listed in the public feed.
+              </div>
+            </div>
+          </label>
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-ink-200 cursor-pointer hover:bg-ink-50">
+            <input
+              type="radio"
+              name="access_mode"
+              checked={survey.access_mode === "open"}
+              onChange={() => setAccessMode("open")}
+              className="mt-1"
+            />
+            <div>
+              <div className="font-medium">Open · friends &amp; family (no login)</div>
+              <div className="text-xs text-ink-500">
+                Anyone with the link can answer without an account. Always free.
+                Choose what contact info to collect below.
+              </div>
+            </div>
+          </label>
+        </fieldset>
+
+        {survey.access_mode === "open" && (
+          <div className="pt-2 space-y-2">
+            <div className="text-sm font-medium text-ink-700">Collect contact info</div>
+            <div className="rounded-xl border border-ink-100 divide-y divide-ink-100">
+              {CONTACT_FIELDS.map((f) => {
+                const cfg: ContactFieldConfig =
+                  survey.contact_fields?.[f.key as ContactFieldKey] ?? {
+                    show: false,
+                    required: false,
+                  };
+                return (
+                  <div
+                    key={f.key}
+                    className="flex items-center justify-between gap-3 p-3"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={cfg.show}
+                        onChange={(e) =>
+                          updateContactField(f.key as ContactFieldKey, {
+                            show: e.target.checked,
+                          })
+                        }
+                      />
+                      <span className="text-sm font-medium">{f.label}</span>
+                    </label>
+                    <label
+                      className={
+                        "flex items-center gap-2 text-xs " +
+                        (cfg.show ? "text-ink-600 cursor-pointer" : "text-ink-300")
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        disabled={!cfg.show}
+                        checked={cfg.required}
+                        onChange={(e) =>
+                          updateContactField(f.key as ContactFieldKey, {
+                            required: e.target.checked,
+                          })
+                        }
+                      />
+                      Required
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-ink-500">
+              Leave everything unchecked to collect nothing — fully anonymous.
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-ink-200 bg-white p-4 space-y-4">
@@ -458,6 +586,8 @@ export function SurveyEditor({
         )}
       </section>
 
+      {survey.access_mode !== "open" && (
+      <>
       <section className="rounded-2xl border border-ink-200 bg-white p-4 space-y-4">
         <h2 className="font-semibold">Payout mode</h2>
         <p className="text-xs text-ink-500">Applies to all versions.</p>
@@ -535,6 +665,8 @@ export function SurveyEditor({
           })}
         </fieldset>
       </section>
+      </>
+      )}
 
       {!editable && (
         <p className="text-xs text-ink-500">

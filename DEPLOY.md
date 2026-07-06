@@ -43,6 +43,7 @@ Run these in order:
 | 3 | `supabase/migrations/0003_ethnicity_seed.sql` | US Census + international race/ethnicity options |
 | 4 | `supabase/migrations/0004_minimal_geo_seed.sql` | ~55 countries, US states, top 80 US cities |
 | 5 | `supabase/migrations/0005_versioning.sql` | Survey versioning + cross-version question linking |
+| 6 | `supabase/migrations/0006_open_access.sql` | Friends & family (no-login) surveys + contact fields |
 
 > **Don't want to deal with the CLI for full GeoNames?** You're done after
 > step 4 — you have enough country/state/city data for US-focused testing.
@@ -139,6 +140,22 @@ Change the template so it surfaces `{{ .Token }}` prominently.
 > number, hashes it into `auth.one_time_tokens`, and emails the plaintext
 > via the template. We never see or store the code — we just hand the
 > user's typed-in number back to Supabase for verification.
+
+### 4bb. Enable anonymous sign-ins (needed for friends & family surveys)
+
+Open ("friends & family") surveys let people answer **without logging in**.
+Under the hood each respondent gets an invisible anonymous account, which
+requires one toggle:
+
+- **Authentication → Sign In / Providers**
+- Find **Anonymous Sign-Ins** (sometimes under "User Signups" or a
+  dedicated row) and turn it **ON**
+- Click **Save**
+
+If this is off, account-required (Network) surveys still work fine — only
+the no-login "Open" mode needs it. If someone tries to answer an open
+survey while it's disabled, they'll see a clear message asking the owner to
+enable it.
 
 ### 4c. URL Configuration (come back to this in step 7)
 

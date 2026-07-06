@@ -8,14 +8,16 @@ export async function middleware(req: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const { pathname } = req.nextUrl;
 
+  // Note: /s/ (shared survey links) is intentionally NOT protected — open
+  // "friends & family" surveys must be reachable without a login. Those pages
+  // enforce their own auth for account-required surveys.
   const isProtected =
     pathname.startsWith("/feed") ||
     pathname.startsWith("/answered") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/surveys") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/s/");
+    pathname.startsWith("/admin");
 
   // If Supabase env vars aren't configured yet, keep the site loadable.
   // Protected routes redirect to a setup-needed page instead of crashing.

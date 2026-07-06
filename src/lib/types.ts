@@ -62,6 +62,15 @@ export type SurveyVersion = {
   retired_at: string | null;
 };
 
+export type ContactFieldKey = "name" | "phone" | "email";
+
+export type ContactFieldConfig = {
+  show: boolean;
+  required: boolean;
+};
+
+export type ContactFields = Partial<Record<ContactFieldKey, ContactFieldConfig>>;
+
 export type Survey = {
   id: string;
   owner_id: string;
@@ -70,6 +79,8 @@ export type Survey = {
   status: "draft" | "open" | "closed";
   visibility: "public" | "link_only";
   share_slug: string;
+  access_mode: "authenticated" | "open";
+  contact_fields: ContactFields;
   payout_mode: "per_question" | "on_complete";
   complete_premium_pct: number;
   verification_fields: VerificationField[];

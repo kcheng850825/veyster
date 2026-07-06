@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { StartSurveyForm } from "@/components/StartSurveyForm";
+import { OpenAccessStart } from "@/components/OpenAccessStart";
 import type { Profile, Survey, SurveyVersion, VerificationField } from "@/lib/types";
 
 export default async function SurveyIntroPage({
@@ -11,7 +12,74 @@ export default async function SurveyIntroPage({
 }) {
   const { slug } = await params;
   const supabase = await getServerSupabase();
+
+  // Survey + active version are publicly readable (RLS) once a version is
+  // published, so this works for unauthenticated visitors too.
+  const { data: survey } = await supabase
+    .from("surveys")
+    .select("*")
+    .eq("share_slug", slug)
+    .maybeSingle<Survey>();
+  if (!survey) notFound();
+
+  const { data: activeVersion } = await supabase
+    .from("survey_versions")
+    .select("*")
+    .eq("survey_id", survey.id)
+    .eq("status", "open")
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle<SurveyVersion>();
+
+  if (!activeVersion) return <NotAccepting title={survey.title} />;
+
+  const { data: questionRows } = await supabase
+    .from("questions")
+    .select("id")
+    .eq("version_id", activeVersion.id);
+  const questionCount = questionRows?.length ?? 0;
+
   const { data: userData } = await supabase.auth.getUser();
+
+  // ---- Open (friends & family) mode: no login required ----
+  if (survey.access_mode === "open") {
+    // If this visitor (already anonymous-signed-in from a prior visit) has a
+    // session for this version, resume or show the thank-you screen.
+    if (userData.user) {
+      const { data: existing } = await supabase
+        .from("survey_sessions")
+        .select("id, completed_at")
+        .eq("version_id", activeVersion.id)
+        .eq("respondent_id", userData.user.id)
+        .maybeSingle();
+      if (existing?.completed_at) redirect(`/s/${slug}/done`);
+      if (existing) redirect(`/s/${slug}/respond`);
+    }
+
+    return (
+      <main className="min-h-screen px-6 py-8 max-w-lg mx-auto">
+        <div className="text-xs uppercase tracking-wide text-ink-500">Survey</div>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{survey.title}</h1>
+        {survey.description && (
+          <p className="mt-2 text-ink-600 whitespace-pre-line">{survey.description}</p>
+        )}
+        <div className="mt-6 rounded-2xl border border-ink-200 bg-white p-4 text-sm">
+          <Row
+            label="Questions"
+            value={`${questionCount} yes/no question${questionCount === 1 ? "" : "s"}`}
+          />
+        </div>
+        <OpenAccessStart
+          slug={slug}
+          surveyId={survey.id}
+          versionId={activeVersion.id}
+          contactFields={survey.contact_fields ?? {}}
+        />
+      </main>
+    );
+  }
+
+  // ---- Authenticated (network) mode ----
   if (!userData.user) redirect(`/login?next=/s/${slug}`);
 
   const { data: profile } = await supabase
@@ -22,44 +90,6 @@ export default async function SurveyIntroPage({
 
   if (!profile?.onboarded_at) redirect(`/onboarding?next=/s/${slug}`);
 
-  const { data: survey } = await supabase
-    .from("surveys")
-    .select("*")
-    .eq("share_slug", slug)
-    .maybeSingle<Survey>();
-  if (!survey) notFound();
-
-  // Find the currently-open version, if any.
-  const { data: activeVersion } = await supabase
-    .from("survey_versions")
-    .select("*")
-    .eq("survey_id", survey.id)
-    .eq("status", "open")
-    .order("version_number", { ascending: false })
-    .limit(1)
-    .maybeSingle<SurveyVersion>();
-
-  if (!activeVersion) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-6 text-center">
-        <div>
-          <h1 className="text-xl font-bold">{survey.title}</h1>
-          <p className="text-ink-500 mt-2">This survey is not accepting responses right now.</p>
-          <Link href="/feed" className="mt-6 inline-block text-brand-600 hover:underline">
-            Browse other surveys
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  const { data: questions } = await supabase
-    .from("questions")
-    .select("id")
-    .eq("version_id", activeVersion.id);
-  const questionCount = questions?.length ?? 0;
-
-  // Has this respondent answered this specific version already?
   const { data: existingSession } = await supabase
     .from("survey_sessions")
     .select("id, completed_at, version_id")
@@ -71,9 +101,9 @@ export default async function SurveyIntroPage({
     return (
       <main className="min-h-screen flex items-center justify-center px-6 text-center">
         <div>
-          <h1 className="text-xl font-bold">Already answered</h1>
+          <h1 className="text-xl font-semibold">Already answered</h1>
           <p className="text-ink-500 mt-2">
-            You've completed v{activeVersion.version_number} of this survey. Thanks.
+            You&apos;ve completed v{activeVersion.version_number} of this survey. Thanks.
           </p>
           <Link href="/feed" className="mt-6 inline-block text-brand-600 hover:underline">
             Back to feed
@@ -92,7 +122,7 @@ export default async function SurveyIntroPage({
       <div className="text-xs uppercase tracking-wide text-ink-500">
         Survey · v{activeVersion.version_number}
       </div>
-      <h1 className="text-2xl font-bold">{survey.title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{survey.title}</h1>
       {survey.description && (
         <p className="mt-2 text-ink-600 whitespace-pre-line">{survey.description}</p>
       )}
@@ -123,6 +153,20 @@ export default async function SurveyIntroPage({
         profile={profile}
         verificationFields={survey.verification_fields as VerificationField[]}
       />
+    </main>
+  );
+}
+
+function NotAccepting({ title }: { title: string }) {
+  return (
+    <main className="min-h-screen flex items-center justify-center px-6 text-center">
+      <div>
+        <h1 className="text-xl font-semibold">{title}</h1>
+        <p className="text-ink-500 mt-2">This survey is not accepting responses right now.</p>
+        <Link href="/feed" className="mt-6 inline-block text-brand-600 hover:underline">
+          Browse other surveys
+        </Link>
+      </div>
     </main>
   );
 }

@@ -26,6 +26,13 @@ export const VERIFICATION_FIELDS = [
   { key: "ethnicity", label: "Ethnicity" },
 ] as const;
 
+// Contact fields collected from open-access (friends & family) respondents.
+export const CONTACT_FIELDS = [
+  { key: "name", label: "Name", inputType: "text", autoComplete: "name", placeholder: "Your name" },
+  { key: "phone", label: "Phone number", inputType: "tel", autoComplete: "tel", placeholder: "(555) 123-4567" },
+  { key: "email", label: "Email", inputType: "email", autoComplete: "email", placeholder: "you@example.com" },
+] as const;
+
 export const MIN_RESPONDENT_AGE = 18;
 export const MAX_QUESTIONS_PER_SURVEY = 10;
 

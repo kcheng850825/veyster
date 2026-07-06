@@ -19,7 +19,7 @@ export default async function ResultsPage({
   const [{ data: survey }, { data: versions }] = await Promise.all([
     supabase
       .from("surveys")
-      .select("id, title, owner_id, is_paid_tier, payout_mode")
+      .select("id, title, owner_id, is_paid_tier, payout_mode, access_mode")
       .eq("id", id)
       .eq("owner_id", user.id)
       .maybeSingle(),
@@ -46,7 +46,7 @@ export default async function ResultsPage({
       .returns<Question[]>(),
     supabase
       .from("survey_sessions")
-      .select("id, version_id, profile_snapshot, completed_at")
+      .select("id, version_id, profile_snapshot, completed_at, started_at, respondent_name, respondent_phone, respondent_email")
       .in("version_id", idsForIn),
   ]);
 
@@ -57,19 +57,76 @@ export default async function ResultsPage({
     .in("session_id", sessionIds.length ? sessionIds : [SENTINEL_UUID])
     .returns<({ session_id: string; question_id: string; answer: Answer })[]>();
 
+  const isOpen = survey.access_mode === "open";
+  const contacts = isOpen
+    ? (sessions ?? [])
+        .map((s) => ({
+          name: s.respondent_name as string | null,
+          phone: s.respondent_phone as string | null,
+          email: s.respondent_email as string | null,
+          completed: !!s.completed_at,
+          at: (s.completed_at ?? s.started_at) as string,
+        }))
+        .sort((a, b) => (a.at < b.at ? 1 : -1))
+    : [];
+  const hasContactData = contacts.some((c) => c.name || c.phone || c.email);
+
   return (
-    <ResultsView
-      surveyId={survey.id}
-      surveyTitle={survey.title}
-      versions={versions ?? []}
-      questions={questions ?? []}
-      sessions={(sessions ?? []).map((s) => ({
-        id: s.id,
-        version_id: s.version_id as string,
-        profile_snapshot: s.profile_snapshot as Record<string, unknown>,
-        completed_at: s.completed_at as string | null,
-      }))}
-      answers={answers ?? []}
-    />
+    <>
+      <ResultsView
+        surveyId={survey.id}
+        surveyTitle={survey.title}
+        versions={versions ?? []}
+        questions={questions ?? []}
+        sessions={(sessions ?? []).map((s) => ({
+          id: s.id,
+          version_id: s.version_id as string,
+          profile_snapshot: s.profile_snapshot as Record<string, unknown>,
+          completed_at: s.completed_at as string | null,
+        }))}
+        answers={answers ?? []}
+      />
+
+      {isOpen && hasContactData && (
+        <section className="mt-6 space-y-3">
+          <h2 className="font-semibold">Respondents</h2>
+          <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-ink-50 text-xs text-ink-500 text-left">
+                <tr>
+                  <th className="p-3">Name</th>
+                  <th className="p-3">Email</th>
+                  <th className="p-3">Phone</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contacts.map((c, i) => (
+                  <tr key={i} className="border-t border-ink-100">
+                    <td className="p-3">{c.name || "—"}</td>
+                    <td className="p-3">{c.email || "—"}</td>
+                    <td className="p-3">{c.phone || "—"}</td>
+                    <td className="p-3">
+                      {c.completed ? (
+                        <span className="chip chip-yes">Completed</span>
+                      ) : (
+                        <span className="chip chip-muted">In progress</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-ink-500">
+                      {new Date(c.at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-ink-500">
+            Contact info collected from open (friends &amp; family) respondents.
+          </p>
+        </section>
+      )}
+    </>
   );
 }

@@ -11,7 +11,9 @@ export default async function RespondPage({
   const { slug } = await params;
   const supabase = await getServerSupabase();
   const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect(`/login?next=/s/${slug}/respond`);
+  // No user (e.g. an open-access visitor who hasn't started) → send them to
+  // the intro, which handles both login-required and open-access flows.
+  if (!userData.user) redirect(`/s/${slug}`);
 
   const { data: survey } = await supabase
     .from("surveys")
