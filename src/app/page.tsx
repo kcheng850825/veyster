@@ -1,5 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
+
+// Canonical URL for the homepage (resolved against metadataBase in the root
+// layout, i.e. https://www.veyster.com).
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default function Home() {
   return (
